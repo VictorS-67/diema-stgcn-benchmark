@@ -1,0 +1,138 @@
+# STGCN on DIEMA-7 (seven emotions) -- the recommended configuration.
+#
+# Every setting below was chosen by measurement rather than inherited, and the
+# numbers in the right-hand column are what each choice is worth against the
+# obvious alternative. See RESULTS.md for the full picture and for the caveat
+# that goes with these numbers.
+#
+#   input        rotations (6D) + root/joint positions + velocity +
+#                acceleration: 15 channels on a 25-vertex graph
+#                                                     +3.6 over rotations alone
+#   augmentation mirror only, no rotation noise       +3.8 over no augmentation;
+#                                                     the other four cost 1.2
+#   body size    NOT divided out                      dividing it out costs 1.2
+#   schedule     400 epochs, cosine from lr 0.1,
+#                SGD momentum 0.9 nesterov            +2.7 over 100 epochs
+#   clip length  100 frames (3.3 s at 30 Hz)          flat from 50 to 200
+#   graph        edge_weighting: importance, which
+#                scales existing bones but cannot
+#                create new ones                      +3.2 over an unconstrained graph
+#   checkpoint   the final epoch, no selection        selecting on validation is worse
+#   smoothing    none                                 costs about a point
+#   temporal     plusplus: false, the original 9-frame
+#                block. The STGCN++ multi-branch unit
+#                is supported but not measured here.
+#
+# Report the mean over all ten leave-performer-out folds and at least three
+# seeds. Averaging several seeds' predicted probabilities at inference is worth
+# about four more points and costs no training.
+#
+# Requires a dataset built with --include-positions --position-space joint;
+# see the preprocessing step in README.md.
+#
+# Usage:
+#   scripts/run_lpo.sh
+#   emo-train --config configs/diema7_stgcn_recipe.yaml --fold K --num-folds 10 \
+#       --override data.seed=255
+
+data:
+  data_path: data/processed/diema7_quat_pos.npz
+  split_path: null              # rotating-val leave-performer-out via --fold/--num-folds
+  target_repr: 6d
+  streams: [joint_rot, root_pos, joint_pos, joint_vel, joint_acc]
+  scale_normalize: false        # measured: dividing out body size costs 1.23 pp on this input
+  num_workers: 6
+
+model:
+  type: stgcn
+  num_class: 7
+  in_channels: 15
+  dropout: 0.5
+  edge_weighting: importance
+  # The ORIGINAL ST-GCN temporal block: one 9-frame convolution per block.
+  # Every number in the campaign was produced with this setting; the STGCN++
+  # multi-branch block (plusplus: true) was never run and is its own campaign.
+  # The loader defaults to true, so this line is load-bearing.
+  plusplus: false
+  # Width of the first four blocks; the ladder is 64/128/256. Swept in the
+  # Scales the whole network from one key: 32 gives ~0.8 M parameters,
+  # 64 gives 3.1 M, 128 gives 12 M.
+  base_channels: 64
+
+skeleton:
+  num_nodes: 25
+  # Same 25-vertex space as the rotation baseline; vertex 0 is the root,
+  # [0, 1] attaches it to Hips.
+  inward_edges:
+    - [0, 1]
+    - [2, 1]
+    - [3, 2]
+    - [4, 3]
+    - [5, 4]
+    - [6, 5]
+    - [7, 6]
+    - [8, 7]
+    - [9, 5]
+    - [10, 9]
+    - [11, 10]
+    - [12, 11]
+    - [13, 5]
+    - [14, 13]
+    - [15, 14]
+    - [16, 15]
+    - [17, 1]
+    - [18, 17]
+    - [19, 18]
+    - [20, 19]
+    - [21, 1]
+    - [22, 21]
+    - [23, 22]
+    - [24, 23]
+  up_axis: "+z"
+  lateral_axis: "+x"
+  root_order: "ZYX"
+  lr_joint_pairs:
+    - [12, 8]   # LeftShoulder <-> RightShoulder
+    - [13, 9]   # LeftArm <-> RightArm
+    - [14, 10]  # LeftForeArm <-> RightForeArm
+    - [15, 11]  # LeftHand <-> RightHand
+    - [20, 16]  # LeftUpLeg <-> RightUpLeg
+    - [21, 17]  # LeftLeg <-> RightLeg
+    - [22, 18]  # LeftFoot <-> RightFoot
+    - [23, 19]  # LeftToeBase <-> RightToeBase
+  rot_channels: "ZYX"
+
+training:
+  base_lr: 0.1
+  optimizer: SGD
+  scheduler_type: cosine
+  weight_decay: 0.0005
+  max_epochs: 400
+  batch_size: 64
+  clip_length: 100
+  precision: bf16-mixed
+  gradient_clip_val: 1.0
+  early_stopping: false
+  label_smoothing: 0.0
+  aux_loss_weights: {}
+
+checkpointing:
+  save: [last]
+  test_with: last
+
+logging:
+  log_dir: logs/stgcn_recipe/seed{seed}/fold{fold}/
+
+# Mirror only. The other four transforms are worth nothing on rotations and
+# `noise` (a 1.5 deg jitter, FK-amplified down the chain) is the one thing that
+# stops the position channels from fitting. Measured on this exact input in
+# Measured on this exact input: mirror-only reaches 45.1% where the full
+# five-transform pipeline reaches 40.6%.
+augmentation:
+  enabled: true
+  rotate: false
+  mirror: true
+  mirror_prob: 0.5
+  speed: false
+  noise_sigma: 0
+  dropout: false

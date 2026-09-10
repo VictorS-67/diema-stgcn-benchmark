@@ -1,0 +1,49 @@
+diema-stgcn-benchmark
+Copyright 2026 Victor Schneider
+
+This product includes software developed as part of the following projects.
+Licensed under the Apache License, Version 2.0 (see LICENSE).
+
+--------------------------------------------------------------------------
+Third-party code and attribution
+--------------------------------------------------------------------------
+
+Parts of the model implementation follow, or are adapted from, published work
+by others.
+
+* ST-GCN architecture: the ten-block spatio-temporal stack, the 9-frame
+  temporal unit, and the edge-importance mask.
+  Yan, Xiong & Lin, "Spatial Temporal Graph Convolutional Networks for
+  Skeleton-Based Action Recognition", AAAI 2018.
+  https://github.com/yysijie/st-gcn  --  BSD-2-Clause.
+
+* STGCN++ multi-branch temporal unit: six branches (1x1 convolution,
+  max-pool, four dilated 3-frame convolutions).
+  Duan et al., "PYSKL: Towards Good Practices for Skeleton Action
+  Recognition".
+  https://github.com/kennymckormick/pyskl  --  Apache-2.0.
+
+* Graph-learning modes "none" / "init" / "offset" / "importance": the names,
+  semantics and initialisations mirror unit_gcn(adaptive=...).
+  https://github.com/kennymckormick/pyskl
+  https://github.com/open-mmlab/mmaction2  --  both Apache-2.0.
+
+* Direction-partitioned adjacency (self / inward / outward links),
+  reimplemented in PyTorch.
+  Shi et al., "Two-Stream Adaptive Graph Convolutional Networks for
+  Skeleton-Based Action Recognition", CVPR 2019.
+  https://github.com/lshiwjx/2s-AGCN  --  no licence declared upstream; the
+  implementation here is independent and cites the method.
+
+--------------------------------------------------------------------------
+Dataset
+--------------------------------------------------------------------------
+
+The DIEM-A corpus is NOT part of this repository and is not redistributed
+here. It is released for research use only by its authors and must be
+obtained from them directly:
+
+    https://www.cr-ict.riec.tohoku.ac.jp/diem-a/
+
+If you use this repository, please cite the DIEM-A dataset paper and the
+architecture papers above alongside it.

@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+dist/
+build/
+*.so
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# The DIEM-A corpus is research-licensed and never committed. `data/` is
+# whatever you point it at: a real directory, or a symlink to a shared copy.
+/data
+
+# Training artefacts
+logs/
+lightning_logs/
+checkpoints/
+*.ckpt
+wandb/
+
+# Your own results
+runs/
+
+# Test cache
+.pytest_cache/

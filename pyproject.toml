@@ -1,0 +1,56 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "diema-stgcn-benchmark"
+version = "1.0.0"
+description = "A reproducible ST-GCN baseline for emotion recognition on the DIEM-A motion-capture corpus"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Victor Schneider" }]
+keywords = ["skeleton", "graph-neural-network", "emotion-recognition",
+            "motion-capture", "action-recognition", "st-gcn", "diema"]
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "torch>=2.0",
+    "pytorch-lightning>=2.0",
+    "numpy>=1.21",
+    "pandas>=1.5",
+    "matplotlib>=3.7",
+    "torchmetrics>=0.11",
+    # BVH parsing, forward kinematics, tensor packing and the augmentation
+    # pipeline all live upstream. Both are on PyPI; nothing here needs a
+    # local checkout. Upper-bounded because 0.x minors are breaking by policy.
+    "pybvh>=0.8.2,<0.9",
+    "pybvh-ml>=0.6,<0.7",
+    "pyyaml>=6.0",
+    "tensorboard>=2.14",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0", "pytest-cov>=4.0", "jupyter>=1.0"]
+
+[project.urls]
+Homepage = "https://github.com/VictorS-67/diema-stgcn-benchmark"
+Dataset = "https://www.cr-ict.riec.tohoku.ac.jp/diem-a/"
+
+[project.scripts]
+emo-train = "emo_mocap.cli.train:main"
+emo-evaluate = "emo_mocap.cli.evaluate:main"
+emo-predict = "emo_mocap.cli.predict:main"
+emo-preprocess = "emo_mocap.cli.preprocess:main"
+emo-generate-splits = "emo_mocap.cli.generate_splits:main"
+emo-ensemble = "emo_mocap.cli.ensemble:main"
+
+[tool.pytest.ini_options]
+markers = ["slow: end-to-end tests (deselect with -m 'not slow')"]
+
+[tool.setuptools.packages.find]
+include = ["emo_mocap*"]
