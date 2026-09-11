@@ -1,8 +1,15 @@
 # diema-stgcn-benchmark
 
+[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![Tests](https://github.com/VictorS-67/diema-stgcn-benchmark/actions/workflows/test.yml/badge.svg)](https://github.com/VictorS-67/diema-stgcn-benchmark/actions/workflows/test.yml)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+
+
 A reproducible ST-GCN baseline for **emotion recognition from motion capture**, on the [DIEM-A corpus](https://www.cr-ict.riec.tohoku.ac.jp/diem-a/). Performers act out emotions in a mocap suit; the model reads the skeleton and names the emotion.
 
 This repository is a **complete path from raw BVH files to a number you can put in a table**, and a starting point for your own work. Everything is driven by one YAML config, the evaluation protocol is leave-performer-out so a result means "on people the model has never seen", and the recommended settings are the outcome of a tuning campaign rather than defaults inherited from another dataset.
+
+BVH parsing, forward kinematics, tensor packing and the augmentation pipeline all come from [pybvh](https://victors-67.github.io/pybvh/) and [pybvh-ml](https://victors-67.github.io/pybvh-ml/), two companion libraries that are useful on their own for BVH work.
 
 ---
 
@@ -39,7 +46,6 @@ The test suite needs **no dataset and no GPU** and finishes in about fifteen sec
 251 passed in 3.80s
 ```
 
-BVH parsing, forward kinematics, tensor packing and the augmentation pipeline all live in [pybvh](https://pypi.org/project/pybvh/) and [pybvh-ml](https://pypi.org/project/pybvh-ml/), which install from PyPI. You do not need a local checkout of either.
 
 ## 2. Get the data
 

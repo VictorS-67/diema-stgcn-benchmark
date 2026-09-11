@@ -1,0 +1,37 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # The ends of the range pyproject's requires-python advertises, so the
+        # badge cannot outlive the claim. 3.11 is what the README recommends.
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # CPU wheels only. The suite needs no GPU, and the default CUDA build is
+      # some two gigabytes of download this job would never use.
+      - name: Install torch (CPU)
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      # The command the README tells a reader to run, not a variant of it.
+      - name: Test
+        run: make test

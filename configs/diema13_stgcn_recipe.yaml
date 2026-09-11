@@ -17,7 +17,7 @@ data:
   data_path: data/processed/diema13_quat_pos.npz
   split_path: null              # rotating-val leave-performer-out via --fold/--num-folds
   target_repr: 6d
-  streams: [joint_rot, root_pos, joint_pos, joint_vel, joint_acc]
+  streams: [root_pos, joint_rot, joint_pos, joint_vel, joint_acc]
   scale_normalize: false
   num_workers: 6
 
