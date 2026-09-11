@@ -35,9 +35,11 @@ class STGCN_Model(BaseModel):
         plusplus: if True, use the STGCN++ multi-branch temporal unit
             (six parallel branches with dilations 1-4, PySKL) in place of
             the original ST-GCN's single 9-frame temporal convolution
-            (default: True, here and in ``from_config``). The DIEMA
-            campaign of 2026-08/09 ran with it False, i.e. the original
-            block; every shipped DIEMA config sets it explicitly.
+            (default: False, here and in ``from_config``). False is the
+            block every number in this repository was measured with; True
+            is supported, tested and unevaluated on DIEM-A. The default
+            follows the measurement so that a config omitting the key gets
+            the documented model.
         unit_dropout: dropout within TCN_Unit_plus branches (default: 0.1);
             inert when ``plusplus`` is False.
         base_channels: width of the first four blocks; the ladder is
@@ -54,7 +56,7 @@ class STGCN_Model(BaseModel):
         in_channels,
         dropout=0.5,
         edge_weighting="importance",
-        plusplus=True,
+        plusplus=False,
         unit_dropout=0.1,
         base_channels=64,
     ):
@@ -133,11 +135,11 @@ class STGCN_Model(BaseModel):
             num_nodes=config.skeleton.num_nodes,
             in_channels=config.model.in_channels,
             edge_weighting=getattr(config.model, "edge_weighting", "importance"),
-            # Default True matches the constructor. Until 2026-09-06 this
-            # defaulted to False while the constructor said True, and the
-            # DIEMA configs' explicit `plusplus: false` was the only thing
-            # documenting which temporal block actually trained.
-            plusplus=getattr(config.model, "plusplus", True),
+            # False matches the constructor and the measured recipe. Both
+            # shipped configs set the key explicitly anyway; the default is
+            # what a config of your own gets when it says nothing, and it
+            # should be the block the reported numbers come from.
+            plusplus=getattr(config.model, "plusplus", False),
             dropout=getattr(config.model, "dropout", 0.5),
             unit_dropout=getattr(config.model, "unit_dropout", 0.1),
             base_channels=getattr(config.model, "base_channels", 64),

@@ -1,63 +1,53 @@
 # Results
 
-Two tasks, one recipe, nothing re-tuned between them. Every number here comes
-from `configs/diema7_stgcn_recipe.yaml` and `configs/diema13_stgcn_recipe.yaml`
-exactly as they ship, trained with `scripts/run_lpo.sh`.
+Two tasks, one recipe, nothing re-tuned between them. Every number here comes from `configs/diema7_stgcn_recipe.yaml` and `configs/diema13_stgcn_recipe.yaml` exactly as they ship, trained with `scripts/run_lpo.sh`.
 
 ## How to read these numbers
 
-> **These are a baseline to reproduce, not an unbiased estimate.** The recipe
-> was chosen by a tuning campaign that scored these same ten test folds many
-> times over, so the test column carries selection optimism that cannot be
-> measured from inside the same folds.
+> **These are a baseline to reproduce, not an unbiased estimate.** The recipe was chosen by a tuning campaign that scored these same ten test folds many times over, so the test column carries selection optimism.
 >
-> Two things bound how large that is. **Validation** is a separate, equally
-> held-out group of performers, used during the campaign only as an agreement
-> check rather than as the thing being optimised, and it tracks test to within
-> a third of a point. And the **13-label numbers are cleaner still**: the
-> recipe was carried over to that task with nothing re-tuned, so no
-> hyperparameter was ever selected on those folds.
+> Part of that is measurable. Against **validation**, a separate group of performers held out the same way, the seven-emotion test column is inflated by **0.35 points**, 95% interval [−0.29, +1.00] — a few tenths, and not distinguishable from zero. What that comparison cannot see is optimism shared by both held-out splits, which is bounded rather than measured: **about 2 points** in a worst case the campaign's own effect sizes argue against. [How large the selection optimism is](#how-large-the-selection-optimism-is) derives both.
 >
-> Re-shuffling which performers land in which fold would not fix this. Every
-> performer is tested exactly once whichever grouping you use, so the ten-fold
-> mean moves by about 0.04 points across re-groupings while any single fold
-> moves by 2.7. The selection used these 92 people either way. The only real
-> fix is a group of performers held out before tuning begins and scored once
-> at the end, which is what we would advise for any new campaign.
+> The **13-label numbers carry neither**: the recipe was carried over to that task with nothing re-tuned, so no hyperparameter was ever selected on those folds.
 >
-> Quote the mean over seeds with the validation column beside it, and say how
-> the configuration was chosen.
+> Re-shuffling which performers land in which fold would not fix this. Every performer is tested exactly once whichever grouping you use, so the ten-fold mean moves by about 0.04 points across re-groupings while any single fold moves by 2.7. The selection used these 92 people either way. The only real fix is a group of performers held out before tuning begins and scored once at the end, which is what we would advise for any new campaign.
+>
+> Quote the mean over seeds with the validation column beside it, and say how the configuration was chosen.
 
-**Protocol.** Leave-performer-out, 10 folds. Test is one group of performers,
-validation is the next group, training is the rest, so both held-out splits
-are people the model has never seen. Accuracy and macro-F1 are computed per
-fold, then averaged over folds, then over seeds. Per-class figures and
-confusion matrices are pooled over folds and seeds. The reported checkpoint is
-the final epoch, fixed in advance. Balanced accuracy is the mean of per-class
-recalls, which matters for the 13-label task where `neutral` is under-sampled.
+### How large the selection optimism is
+
+The campaign behind this recipe scored roughly 90 distinct configurations on these ten test folds, producing 142 fold-averaged runs at the final epoch. Every one of them was also scored on validation, and that is what makes part of the optimism measurable: validation is a second group of performers held out the same way, so under leave-performer-out both splits estimate the same quantity, and a configuration selected on test should beat its own validation score by however much luck went into selecting it.
+
+**The test folds are not systematically easier.** Across all 142 runs, test averaged 0.07 points *below* validation. That offset is what any single run should be read against, and it is stable: restricted to 400-epoch runs it is 0.01 points, restricted to the 40 runs above 42% it is +0.11.
+
+**The recipe sits about a third of a point above that offset.** Its five-seed means are 44.38 on test and 44.10 on validation, a gap of +0.28, which is +0.35 once the campaign-wide −0.07 is removed. Run-to-run the gap has a spread of 0.74 points, so a five-seed mean carries a standard error of 0.33 and the 95% interval is [−0.29, +1.00]. Taking the offset from the 400-epoch runs gives +0.29 instead, and from the contenders above 42% gives +0.18; every version covers zero. The 13-label recipe, never tuned on these folds, reads +0.06 on the same comparison.
+
+**What that does not bound.** Anything that inflated test and validation together cancels in the difference, and the campaign did use validation as an agreement check, so some of it will have. That shared component is optimism with respect to performers *outside* these 92, and nothing computed inside the corpus can measure it. The worst case for it is a winner's curse: had all ~90 configurations been equally good and separated only by the 0.69 points of seed noise, the best of them would read about **2.1 points** high. Treat that as a ceiling and not an estimate — the recipe was adopted on effects of +2.67 to +3.79 points replicated at three seeds, not by picking between ties — and note it barely moves with the count, running from 1.9 points at 50 configurations to 2.5 at 500.
+
+**In one line.** Read the seven-emotion test column as a few tenths high relative to other performers in this corpus, and treat 2 points as the outer limit of what selection could have added relative to performers outside it.
+
+These two figures are derived from the tuning campaign's own records, which live in the project this benchmark was extracted from and are not in this repository. Everything else on this page reproduces from the commands in [Reproducing these numbers](#reproducing-these-numbers).
+
+---
+
+**Protocol.** Leave-performer-out, 10 folds. Test is one group of performers, validation is the next group, training is the rest, so both held-out splits are people the model has never seen. Accuracy and macro-F1 are computed per fold, then averaged over folds, then over seeds. Per-class figures and confusion matrices are pooled over folds and seeds. The reported checkpoint is the final epoch, fixed in advance. Balanced accuracy is the mean of per-class recalls, which matters for the 13-label task where `neutral` is under-sampled.
 
 ---
 
 ## DIEMA-7: seven emotions
 
-5,796 clips, 92 performers, 10 folds, 5 seeds. Chance is 14.3% and the largest
-class is also 14.3%, so the corpus is balanced.
+5,796 clips, 92 performers, 10 folds, 5 seeds. Chance is 14.3% and the largest class is also 14.3%, so the corpus is balanced.
 
 | model | test acc | test macro-F1 | val acc | balanced acc |
 |---|---|---|---|---|
 | single model, mean of 5 seeds | **44.38** ± 0.79 | 43.69 ± 0.82 | 44.10 ± 0.24 | 44.39 |
 | ensemble of the 5 seeds | **48.50** | 47.66 | — | 48.50 |
 
-That is 3.1 times chance for a single model and 3.4 times for the ensemble.
-Averaging the five seeds' probabilities costs no extra training and is worth
-4.1 points, which is more than any single change in the recipe.
+That is 3.1 times chance for a single model and 3.4 times for the ensemble. Averaging the five seeds' probabilities costs no extra training and is worth 4.1 points, which is more than any single change in the recipe.
 
-Per-seed test accuracy runs 43.60, 43.60, 44.34, 45.13, 45.25. The spread on
-validation is a quarter of a point, so the pipeline is stable; the wider test
-spread is fold-difficulty noise, not instability.
+Per-seed test accuracy runs 43.60, 43.60, 44.34, 45.13, 45.25. The spread on validation is a quarter of a point, so the pipeline is stable; the wider test spread is fold-difficulty noise, not instability.
 
-Training accuracy is 99.93%. A run of this recipe that lands materially below
-that has not finished fitting, and its test number is not comparable.
+Training accuracy is 99.93%. A run of this recipe that lands materially below that has not finished fitting, and its test number is not comparable.
 
 ### Per emotion
 
@@ -71,8 +61,7 @@ that has not finished fitting, and its test number is not comparable.
 | sadness | 828 | 59.0 | 49.6 | 53.9 | 64.1 | 57.7 |
 | surprise | 828 | 37.5 | 43.1 | 40.1 | 40.3 | 43.7 |
 
-`sadness` and `joy` are recognised best, `disgust` worst by a wide margin at
-22.8% recall, which is still 1.6 times chance. No emotion is unlearned.
+`sadness` and `joy` are recognised best, `disgust` worst by a wide margin at 22.8% recall, which is still 1.6 times chance. No emotion is unlearned.
 
 ![DIEMA-7 confusion matrix](figures/diema7_confusion.png)
 
@@ -90,36 +79,22 @@ Row percentages, true emotion in rows, single models pooled over seeds.
 | disgust | 6.4 | 8.9 | 15.8 | 10.6 | 21.0 | **22.8** | 14.4 |
 | sadness | 7.6 | 4.1 | 7.4 | 6.2 | 7.9 | 7.8 | **59.0** |
 
-**Emotions are ordered by clustering the confusion matrix**, using average
-linkage with optimal leaf ordering on the symmetrised row percentages, so
-mutually confused emotions sit next to each other and the structure shows up
-as blocks on the diagonal rather than scattered off it.
+**Emotions are ordered by clustering the confusion matrix**, using average linkage with optimal leaf ordering on the symmetrised row percentages, so mutually confused emotions sit next to each other and the structure shows up as blocks on the diagonal rather than scattered off it.
 
-Two blocks stand out. `anger`, `contempt` and `disgust` trade errors heavily,
-with `disgust` sending 21% of its clips to `contempt`. And `surprise` and
-`fear` exchange 13 to 16% each way. `sadness` is the most self-contained
-class. The pattern is consistent with arousal separating better than valence,
-which is an interpretation of the figure rather than a tested claim.
+Two blocks stand out. `anger`, `contempt` and `disgust` trade errors heavily, with `disgust` sending 21% of its clips to `contempt`. And `surprise` and `fear` exchange 13 to 16% each way. `sadness` is the most self-contained class. The pattern is consistent with arousal separating better than valence, which is an interpretation of the figure rather than a tested claim.
 
 ---
 
 ## DIEMA-13: all thirteen labels
 
-10,212 clips, the same 92 performers and the same fold assignment, plus
-`neutral` and five further emotions. 3 seeds. Chance is 7.7%. `neutral` has
-276 clips against 828 for every other label, so read balanced accuracy beside
-plain accuracy.
+10,212 clips, the same 92 performers and the same fold assignment, plus `neutral` and five further emotions. 3 seeds. Chance is 7.7%. `neutral` has 276 clips against 828 for every other label, so read balanced accuracy beside plain accuracy.
 
 | model | test acc | test macro-F1 | val acc | balanced acc |
 |---|---|---|---|---|
 | single model, mean of 3 seeds | **33.52** ± 0.10 | 33.12 ± 0.10 | 33.46 ± 0.33 | 33.85 |
 | ensemble of the 3 seeds | **36.46** | 35.95 | — | 36.85 |
 
-Accuracy falls against the seven-emotion task but the multiple of chance
-rises, from 3.1 to 4.4 for a single model. The seed spread is a tenth of a
-point, an order of magnitude tighter than on DIEMA-7. Training accuracy is
-99.89% on every seed. `neutral` reaches 39.5% recall from a third of the data
-of any other class, so the under-sampled label is not being ignored.
+Accuracy falls against the seven-emotion task but the multiple of chance rises, from 3.1 to 4.4 for a single model. The seed spread is a tenth of a point, an order of magnitude tighter than on DIEMA-7. Training accuracy is 99.89% on every seed. `neutral` reaches 39.5% recall from a third of the data of any other class, so the under-sampled label is not being ignored.
 
 ### Per emotion
 
@@ -139,11 +114,7 @@ of any other class, so the under-sampled label is not being ignored.
 | gratitude | 828 | 53.3 | 43.9 | 48.1 | 56.0 | 49.9 |
 | pride | 828 | 37.9 | 37.2 | 37.5 | 40.3 | 39.6 |
 
-`gratitude` is the best-recognised label in the whole corpus at 53.3% recall.
-`guilt` and `jealousy` are the weakest at 17.3 and 18.6, below `disgust`. Of
-the seven original emotions, `anger`, `disgust` and `surprise` lose only 2 to
-4 points of recall against six new competitors, while `contempt`, `joy` and
-`sadness` each lose 16 to 17. The confusion matrix shows where they went.
+`gratitude` is the best-recognised label in the whole corpus at 53.3% recall. `guilt` and `jealousy` are the weakest at 17.3 and 18.6, below `disgust`. Of the seven original emotions, `anger`, `disgust` and `surprise` lose only 2 to 4 points of recall against six new competitors, while `contempt`, `joy` and `sadness` each lose 16 to 17. The confusion matrix shows where they went.
 
 ![DIEMA-13 confusion matrix](figures/diema13_confusion.png)
 
@@ -169,21 +140,12 @@ Row percentages, true emotion in rows, single models pooled over seeds.
 
 In cluster order the thirteen labels fall into four blocks on the diagonal:
 
-- `disgust`, `jealousy`, `contempt`, `anger` — the negative cluster from the
-  seven-emotion task, with `jealousy` joining it. `contempt` and `jealousy`
-  exchange 14 to 17% of their clips.
+- `disgust`, `jealousy`, `contempt`, `anger` — the negative cluster from the seven-emotion task, with `jealousy` joining it. `contempt` and `jealousy` exchange 14 to 17% of their clips.
 - `surprise` and `fear` — the same pair as before.
-- `shame`, `guilt`, `sadness` — a new low-arousal negative block. `guilt`
-  goes to `sadness` 17% of the time, and this is where `sadness` lost its
-  recall.
-- `joy`, `pride`, `gratitude` — a positive block. `joy` moved out of its old
-  neighbourhood as soon as it had positive neighbours.
+- `shame`, `guilt`, `sadness` — a new low-arousal negative block. `guilt` goes to `sadness` 17% of the time, and this is where `sadness` lost its recall.
+- `joy`, `pride`, `gratitude` — a positive block. `joy` moved out of its old neighbourhood as soon as it had positive neighbours.
 
-The positive block is nearly sealed off from the negative ones, with at most
-6% leakage either way. `neutral` sits between the low-arousal negatives and is
-confused mainly with `sadness` and `contempt`. Read this as valence
-separating the blocks and arousal ordering within them, but note that this is
-a reading of the figure, not a hypothesis anyone tested.
+The positive block is nearly sealed off from the negative ones, with at most 6% leakage either way. `neutral` sits between the low-arousal negatives and is confused mainly with `sadness` and `contempt`. Read this as valence separating the blocks and arousal ordering within them, but note that this is a reading of the figure, not a hypothesis anyone tested.
 
 ---
 
@@ -214,7 +176,4 @@ for s in 255 1 2 3 4; do
 done
 ```
 
-Expect your own numbers to differ by a few tenths. Fold assignment and seeding
-are deterministic, but GPU kernel non-determinism means bitwise reproduction is
-not guaranteed. A gap larger than about a point means something differs in the
-setup, and the first thing to check is the training accuracy column.
+Expect your own numbers to differ by a few tenths. Fold assignment and seeding are deterministic, but GPU kernel non-determinism means bitwise reproduction is not guaranteed. A gap larger than about a point means something differs in the setup, and the first thing to check is the training accuracy column.
