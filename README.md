@@ -1,6 +1,6 @@
 # diema-stgcn-benchmark
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Tests](https://github.com/VictorS-67/diema-stgcn-benchmark/actions/workflows/test.yml/badge.svg)](https://github.com/VictorS-67/diema-stgcn-benchmark/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 
@@ -43,8 +43,20 @@ make test
 The test suite needs **no dataset and no GPU** and finishes in about fifteen seconds. Run it first: it confirms the install while your dataset request is still in someone's inbox.
 
 ```
-251 passed in 3.80s
+252 passed in 4.45s
 ```
+
+**Where it runs.** The test suite runs on Linux, macOS and Windows, and CI checks all three; on Windows, which has no `make`, run `python -m pytest tests/ -m "not slow" -q`. Training is narrower. The recipe trains in `bf16-mixed`, which needs an NVIDIA GPU, Ampere or newer. Without CUDA it falls back to full precision with a warning, which is no longer the configuration the table measured, and 400 epochs over ten folds is out of reach of a CPU anyway. `scripts/run_lpo.sh` is a bash script, so on Windows run it under WSL.
+
+**Matching the measured environment.** The install above takes the newest release of every dependency, which is what you want for building on this code. The table was measured on Linux with one RTX 4090, Python 3.11, torch 2.7.1 on CUDA 12.8 and pytorch-lightning 2.6.1. To reproduce it, install against those pinned versions instead:
+
+```bash
+conda create -n diema python=3.11 && conda activate diema
+pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+pip install -e ".[dev]" -c constraints.txt
+```
+
+[constraints.txt](constraints.txt) pins every package in that environment's dependency tree, and CI installs it on every push so it keeps resolving. Even in a matching environment, GPU kernels are not bitwise deterministic, so expect results within the seed-noise ranges in section 7, not identical digits.
 
 
 ## 2. Get the data
@@ -166,7 +178,7 @@ SEED=1 scripts/run_lpo.sh                                  # another seed
 CONFIG=configs/diema13_stgcn_recipe.yaml scripts/run_lpo.sh  # all 13 labels
 EXTRA="model.plusplus=true" scripts/run_lpo.sh             # the STGCN++ block
 UNTIL=08:00 scripts/run_lpo.sh                             # stop at a wall-clock time
-nohup setsid scripts/run_lpo.sh > run.log 2>&1 &           # detached
+nohup setsid scripts/run_lpo.sh > run.log 2>&1 &           # detached (on macOS, drop setsid)
 ```
 
 **Cost.** About 18 minutes per fold on one RTX 4090, so roughly 3 hours per seed for the seven-emotion task and about twice that for all thirteen.

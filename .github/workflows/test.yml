@@ -8,13 +8,20 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    name: ${{ matrix.os }} / py${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        # Training needs an NVIDIA GPU, but the suite needs neither GPU nor
+        # dataset, so it is the part of the repository that can promise to run
+        # anywhere. Linux forks DataLoader workers; macOS and Windows spawn
+        # them, which pickles what they carry, and only these runners see it.
+        os: [ubuntu-latest, macos-latest, windows-latest]
         # The ends of the range pyproject's requires-python advertises, so the
-        # badge cannot outlive the claim. 3.11 is what the README recommends.
-        python-version: ["3.10", "3.11"]
+        # badge cannot outlive the claim: 3.11, the floor, which the numbers
+        # were measured on and the README recommends, and the newest release.
+        python-version: ["3.11", "3.14"]
 
     steps:
       - uses: actions/checkout@v4
@@ -24,14 +31,47 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
 
-      # CPU wheels only. The suite needs no GPU, and the default CUDA build is
-      # some two gigabytes of download this job would never use.
+      # CPU wheels only. The suite needs no GPU, and the default Linux build is
+      # some two gigabytes of CUDA this job would never use. PyPI's macOS and
+      # Windows wheels are CPU builds already.
       - name: Install torch (CPU)
+        if: runner.os == 'Linux'
         run: pip install torch --index-url https://download.pytorch.org/whl/cpu
 
       - name: Install
         run: pip install -e ".[dev]"
 
       # The command the README tells a reader to run, not a variant of it.
+      - name: Test
+        if: runner.os != 'Windows'
+        run: make test
+
+      # Windows runners have no make; this is exactly what `make test` runs.
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        run: python -m pytest tests/ -m "not slow" -q
+
+  measured-env:
+    # The job above always takes the newest release of everything, which says
+    # nothing about the versions the reported numbers came from. This one
+    # installs those, so constraints.txt cannot quietly stop resolving.
+    name: measured environment (constraints.txt)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      # The CPU build of the same torch release; the table was measured on
+      # the CUDA 12.8 build, which constraints.txt's header shows how to get.
+      - name: Install torch 2.7.1 (CPU)
+        run: pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Install
+        run: pip install -e ".[dev]" -c constraints.txt
+
       - name: Test
         run: make test

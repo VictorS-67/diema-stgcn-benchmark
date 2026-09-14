@@ -230,6 +230,43 @@ class TestBuildPipeline:
         assert by_fn[pybvh_ml.rotate_vertical] == 0.7
         assert by_fn[pybvh_ml.speed_perturbation_arrays] == 0.4
 
+    def test_pipeline_survives_pickling(self, tmp_path):
+        """Every step must pickle, or DataLoader workers cannot start off Linux.
+
+        macOS and Windows start workers by spawning, which pickles the dataset
+        and the pipeline it carries. Linux forks and never pickles, so a
+        closure here trains fine on Linux and crashes everywhere else. The
+        sampled ranges must come through intact, not just the step list.
+        """
+        import pickle
+
+        cfg_path = tmp_path / "cfg.yaml"
+        cfg_path.write_text(
+            "data: {data_path: x.npz}\n"
+            "model: {type: stgcn, num_class: 7}\n"
+            "skeleton: {num_nodes: 25, inward_edges: [[0, 1]],\n"
+            "           lr_joint_pairs: [], up_axis: '+y', lateral_axis: '+x'}\n"
+            "augmentation:\n"
+            "  enabled: true\n"
+            "  rotate: true\n"
+            "  rotate_range: [-30, 30]\n"
+            "  mirror: true\n"
+            "  speed: true\n"
+            "  speed_range: [0.9, 1.1]\n"
+            "  noise_sigma: 1.0\n"
+            "  dropout: true\n"
+        )
+        pipeline = _build_pipeline(load_config(cfg_path))
+        restored = pickle.loads(pickle.dumps(pipeline))
+
+        for before, after in zip(pipeline.augmentations, restored.augmentations,
+                                 strict=True):
+            assert after.fn is before.fn
+            for key, spec in before.kwargs.items():
+                if callable(spec):
+                    assert (after.kwargs[key](np.random.default_rng(0))
+                            == spec(np.random.default_rng(0)))
+
 
 class TestRecipeConfigShape:
     """The shipped recipe must augment with mirror and nothing else.

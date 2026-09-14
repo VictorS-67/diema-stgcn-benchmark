@@ -151,6 +151,8 @@ The positive block is nearly sealed off from the negative ones, with at most 6% 
 
 ## Reproducing these numbers
 
+Every number on this page was measured on Linux with one RTX 4090, Python 3.11 and torch 2.7.1 on CUDA 12.8, with the versions pinned in [constraints.txt](constraints.txt). The README's install section shows how to recreate that environment.
+
 ```bash
 # seven emotions, one seed, about 3 hours on one RTX 4090
 scripts/run_lpo.sh
