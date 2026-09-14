@@ -166,7 +166,7 @@ SEED=1 scripts/run_lpo.sh                                  # another seed
 CONFIG=configs/diema13_stgcn_recipe.yaml scripts/run_lpo.sh  # all 13 labels
 EXTRA="model.plusplus=true" scripts/run_lpo.sh             # the STGCN++ block
 UNTIL=08:00 scripts/run_lpo.sh                             # stop at a wall-clock time
-nohup setsid scripts/run_lpo.sh > run.log 2>&1 &           # detached
+nohup setsid scripts/run_lpo.sh > run.log 2>&1 &           # detached (on macOS, drop setsid)
 ```
 
 **Cost.** About 18 minutes per fold on one RTX 4090, so roughly 3 hours per seed for the seven-emotion task and about twice that for all thirteen.

@@ -16,6 +16,7 @@ import re
 import time
 import warnings
 from datetime import datetime
+from functools import partial
 from pathlib import Path
 
 import torch
@@ -237,6 +238,17 @@ def _needed_position_fields(streams):
     return {derived.get(s, s) for s in (streams or ())} & {"joint_pos", "node_pos"}
 
 
+def _uniform(rng, lo, hi):
+    """Draw one augmentation parameter; bind the range with ``partial``.
+
+    Module-level rather than a lambda so the pipeline pickles. macOS and
+    Windows start DataLoader workers by spawning, which pickles the dataset
+    and the pipeline inside it; a closure trains on Linux, which forks, and
+    crashes on the first batch everywhere else.
+    """
+    return rng.uniform(lo, hi)
+
+
 def _build_pipeline(cfg, skeleton_info=None, streams=None):
     """Build a pybvh_ml AugmentationPipeline from config.
 
@@ -298,7 +310,7 @@ def _build_pipeline(cfg, skeleton_info=None, streams=None):
         lo, hi = aug_cfg.rotate_range
         steps.append((
             pybvh_ml.rotate_vertical, getattr(aug_cfg, "rotate_prob", 1.0),
-            {"angle": lambda rng, lo=lo, hi=hi: rng.uniform(lo, hi),
+            {"angle": partial(_uniform, lo=lo, hi=hi),
              "up_axis": up_axis, "degrees": True},
         ))
 
@@ -320,7 +332,7 @@ def _build_pipeline(cfg, skeleton_info=None, streams=None):
         lo, hi = aug_cfg.speed_range
         steps.append((
             pybvh_ml.speed_perturbation_arrays, getattr(aug_cfg, "speed_prob", 1.0),
-            {"factor": lambda rng, lo=lo, hi=hi: rng.uniform(lo, hi)},
+            {"factor": partial(_uniform, lo=lo, hi=hi)},
         ))
 
     noise_sigma = getattr(aug_cfg, "noise_sigma", 0.0)

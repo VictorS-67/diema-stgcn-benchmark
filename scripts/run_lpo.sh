@@ -18,7 +18,8 @@
 #   UNTIL=08:00 scripts/run_lpo.sh                      # stop cleanly at a wall-clock time
 #
 # Run it detached if it will outlive your terminal:
-#   nohup setsid scripts/run_lpo.sh > run.log 2>&1 &
+#   nohup setsid scripts/run_lpo.sh > run.log 2>&1 &    # Linux
+#   nohup scripts/run_lpo.sh > run.log 2>&1 &           # macOS, which has no setsid
 #
 # Cost: about 18 minutes per fold on one RTX 4090 for the 7-emotion recipe at
 # 400 epochs, so roughly 3 hours per seed. The 13-label corpus is about twice
@@ -38,10 +39,19 @@ UNTIL=${UNTIL:-}
 LOGS="$RUNS/$NAME/seed$SEED"
 OUT="$RUNS/$NAME/seed${SEED}.json"
 
+# The next occurrence of UNTIL (HH:MM), as epoch seconds. Computed in Python
+# rather than with `date -d`, which only GNU date has: on macOS it failed, the
+# deadline stayed empty, and the run silently ignored UNTIL.
 deadline=""
 if [ -n "$UNTIL" ]; then
-  deadline=$(date -d "today $UNTIL" +%s)
-  [ "$deadline" -le "$(date +%s)" ] && deadline=$(date -d "tomorrow $UNTIL" +%s)
+  deadline=$($PY - "$UNTIL" <<'PYEOF'
+import datetime as dt, sys
+at = dt.datetime.combine(dt.date.today(), dt.datetime.strptime(sys.argv[1], "%H:%M").time())
+if at <= dt.datetime.now():
+    at += dt.timedelta(days=1)
+print(int(at.timestamp()))
+PYEOF
+  ) || { echo "!!! could not read a deadline from UNTIL=$UNTIL (expected HH:MM, e.g. 08:00)"; exit 2; }
 fi
 past_deadline() { [ -n "$deadline" ] && [ "$(date +%s)" -ge "$deadline" ]; }
 fold_done() { compgen -G "$LOGS/recipe/fold$(printf %02d "$1")/*/version_*/checkpoints/last.ckpt" > /dev/null; }
