@@ -1,6 +1,6 @@
 # diema-stgcn-benchmark
 
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue)](pyproject.toml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
 [![Tests](https://github.com/VictorS-67/diema-stgcn-benchmark/actions/workflows/test.yml/badge.svg)](https://github.com/VictorS-67/diema-stgcn-benchmark/actions/workflows/test.yml)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 

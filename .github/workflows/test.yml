@@ -19,8 +19,9 @@ jobs:
         # them, which pickles what they carry, and only these runners see it.
         os: [ubuntu-latest, macos-latest, windows-latest]
         # The ends of the range pyproject's requires-python advertises, so the
-        # badge cannot outlive the claim. 3.11 is what the README recommends.
-        python-version: ["3.10", "3.11"]
+        # badge cannot outlive the claim: 3.11, the floor, which the numbers
+        # were measured on and the README recommends, and the newest release.
+        python-version: ["3.11", "3.14"]
 
     steps:
       - uses: actions/checkout@v4

@@ -11,9 +11,9 @@
 #   pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
 #   pip install -e ".[dev]" -c constraints.txt
 #
-# Several pins need Python 3.11 or newer (numpy, pandas, networkx), so create
-# the environment with python=3.11. torch's own CUDA libraries (nvidia-*) and
-# triton are left to torch, which pins them exactly for the build you chose.
+# Create the environment with python=3.11, the version the numbers were
+# measured on. torch's own CUDA libraries (nvidia-*) and triton are left to
+# torch, which pins them exactly for the build you chose.
 # Constraints only ever narrow versions, so jupyter from the dev extra and any
 # platform-only dependency resolve normally.
 #

@@ -7,7 +7,7 @@ name = "diema-stgcn-benchmark"
 version = "1.0.0"
 description = "A reproducible ST-GCN baseline for emotion recognition on the DIEM-A motion-capture corpus"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Victor Schneider" }]
