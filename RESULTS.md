@@ -1,6 +1,6 @@
 # Results
 
-Two tasks, one recipe, nothing re-tuned between them. Every number here comes from `configs/diema7_stgcn_recipe.yaml` and `configs/diema13_stgcn_recipe.yaml` exactly as they ship, trained with `scripts/run_lpo.sh`.
+Two tasks, one recipe, nothing re-tuned between them. Every number here comes from `configs/diema7_stgcn_recipe.yaml` and `configs/diema13_stgcn_recipe.yaml` exactly as they ship, each fold trained with the same command `scripts/run_lpo.sh` runs.
 
 ## How to read these numbers
 
@@ -20,9 +20,11 @@ The campaign behind this recipe scored roughly 90 distinct configurations on the
 
 **The test folds are not systematically easier.** Across all 142 runs, test averaged 0.07 points *below* validation. That offset is what any single run should be read against, and it is stable: restricted to 400-epoch runs it is 0.01 points, restricted to the 40 runs above 42% it is +0.11.
 
-**The recipe sits about a third of a point above that offset.** Its five-seed means are 44.38 on test and 44.10 on validation, a gap of +0.28, which is +0.35 once the campaign-wide −0.07 is removed. Run-to-run the gap has a spread of 0.74 points, so a five-seed mean carries a standard error of 0.33 and the 95% interval is [−0.29, +1.00]. Taking the offset from the 400-epoch runs gives +0.29 instead, and from the contenders above 42% gives +0.18; every version covers zero. The 13-label recipe, never tuned on these folds, reads +0.06 on the same comparison.
+**The recipe sits about a third of a point above that offset.** Its five-seed means are 44.38 on test and 44.10 on validation, a gap of +0.28, which is +0.35 once the campaign-wide −0.07 is removed. Run-to-run the gap has a spread of 0.74 points, so a five-seed mean carries a standard error of 0.33 and the 95% interval is [−0.29, +1.00]. Taking the offset from the 400-epoch runs gives +0.29 instead, and from the contenders above 42% gives +0.18; every version covers zero. The 13-label recipe, never tuned on these folds, has test and validation columns 0.05 apart at five seeds.
 
 **What that does not bound.** Anything that inflated test and validation together cancels in the difference, and the campaign did use validation as an agreement check, so some of it will have. That shared component is optimism with respect to performers *outside* these 92, and nothing computed inside the corpus can measure it. The worst case for it is a winner's curse: had all ~90 configurations been equally good and separated only by the 0.69 points of seed noise, the best of them would read about **2.1 points** high. Treat that as a ceiling and not an estimate — the recipe was adopted on effects of +2.67 to +3.79 points replicated at three seeds, not by picking between ties — and note it barely moves with the count, running from 1.9 points at 50 configurations to 2.5 at 500.
+
+**Fresh seeds measure the seed-selection component.** The five-seed means above include the three seeds the recipe was selected on. Ten seeds on the same RTX 4090 read 43.98 on test and 43.65 on validation, 0.40 and 0.45 below the five-seed means, and the five seeds that were never used for any choice read 43.57 against 44.66 for the three selection seeds. That is the measured size of the seed-selection component, and it is why the single-model level at the top of this page is the ten-seed mean.
 
 **In one line.** Read the seven-emotion test column as a few tenths high relative to other performers in this corpus, and treat 2 points as the outer limit of what selection could have added relative to performers outside it.
 
@@ -36,16 +38,20 @@ These two figures are derived from the tuning campaign's own records, which live
 
 ## DIEMA-7: seven emotions
 
-5,796 clips, 92 performers, 10 folds, 5 seeds. Chance is 14.3% and the largest class is also 14.3%, so the corpus is balanced.
+5,796 clips, 92 performers, 10 folds, ten seeds (255, 1–9) on an RTX 4090 and the same ten on RTX 3090 / 3070 Ti. Chance is 14.3% and the largest class is also 14.3%, so the corpus is balanced.
 
 | model | test acc | test macro-F1 | val acc | balanced acc |
 |---|---|---|---|---|
-| single model, mean of 5 seeds | **44.38** ± 0.79 | 43.69 ± 0.82 | 44.10 ± 0.24 | 44.39 |
-| ensemble of the 5 seeds | **48.50** | 47.66 | — | 48.50 |
+| single model, mean of 10 seeds, RTX 4090 | **43.98** ± 0.72 | 43.37 ± 0.69 | 43.65 ± 0.56 | 43.98 |
+| single model, mean of 10 seeds, RTX 3090 / 3070 Ti | **43.39** ± 0.68 | 42.82 ± 0.62 | 43.21 ± 0.61 | — |
+| single model, mean of seeds 255, 1–4 (RTX 4090; includes the three selection seeds) | 44.38 ± 0.79 | 43.69 ± 0.82 | 44.10 ± 0.24 | 44.39 |
+| ensemble of seeds 255, 1–4 | **48.50** | 47.66 | — | 48.50 |
+| ensemble of seeds 5–9, never used for any choice | **47.82** | 47.12 | — | 47.83 |
+| ensemble of all ten RTX 4090 seeds | 48.99 | 48.19 | — | 48.98 |
 
-That is 3.1 times chance for a single model and 3.4 times for the ensemble. Averaging the five seeds' probabilities costs no extra training and is worth 4.1 points, which is more than any single change in the recipe.
+GPU models differ by about half a point on the identical configuration, so compare runs only within one GPU model. That is 3.1 times chance for a single model and 3.3 to 3.4 times for a five-seed ensemble. Averaging five seeds' probabilities costs no extra training and is worth about four points over the average member (4.1 for seeds 255, 1–4; 4.3 for seeds 5–9, and +3.9 over the best of them, 95% interval [+2.7, +5.0]), which is more than any single change in the recipe.
 
-Per-seed test accuracy runs 43.60, 43.60, 44.34, 45.13, 45.25. The spread on validation is a quarter of a point, so the pipeline is stable; the wider test spread is fold-difficulty noise, not instability.
+Per-seed test accuracy on the RTX 4090 runs 43.05, 43.51, 43.56, 43.60, 43.60, 43.81, 43.93, 44.34, 45.13, 45.25; the two highest are selection seeds (255 and 2). The spread on validation is about half a point, so the pipeline is stable; the wider test spread is fold-difficulty noise, not instability.
 
 Training accuracy is 99.93%. A run of this recipe that lands materially below that has not finished fitting, and its test number is not comparable.
 
@@ -60,6 +66,8 @@ Training accuracy is 99.93%. A run of this recipe that lands materially below th
 | joy | 828 | 56.3 | 52.6 | 54.4 | 61.0 | 58.3 |
 | sadness | 828 | 59.0 | 49.6 | 53.9 | 64.1 | 57.7 |
 | surprise | 828 | 37.5 | 43.1 | 40.1 | 40.3 | 43.7 |
+
+Per-emotion figures and the confusion matrix below are from seeds 255, 1–4.
 
 `sadness` and `joy` are recognised best, `disgust` worst by a wide margin at 22.8% recall, which is still 1.6 times chance. No emotion is unlearned.
 
@@ -87,34 +95,34 @@ Two blocks stand out. `anger`, `contempt` and `disgust` trade errors heavily, wi
 
 ## DIEMA-13: all thirteen labels
 
-10,212 clips, the same 92 performers and the same fold assignment, plus `neutral` and five further emotions. 3 seeds. Chance is 7.7%. `neutral` has 276 clips against 828 for every other label, so read balanced accuracy beside plain accuracy.
+10,212 clips, the same 92 performers and the same fold assignment, plus `neutral` and five further emotions. 5 seeds (255, 1–4), RTX 4090. Chance is 7.7%. `neutral` has 276 clips against 828 for every other label, so read balanced accuracy beside plain accuracy.
 
 | model | test acc | test macro-F1 | val acc | balanced acc |
 |---|---|---|---|---|
-| single model, mean of 3 seeds | **33.52** ± 0.10 | 33.12 ± 0.10 | 33.46 ± 0.33 | 33.85 |
-| ensemble of the 3 seeds | **36.46** | 35.95 | — | 36.85 |
+| single model, mean of 5 seeds | **33.55** ± 0.12 | 33.19 ± 0.15 | 33.50 ± 0.32 | 33.89 |
+| ensemble of the 5 seeds | **37.31** | 36.87 | — | 37.70 |
 
-Accuracy falls against the seven-emotion task but the multiple of chance rises, from 3.1 to 4.4 for a single model. The seed spread is a tenth of a point, an order of magnitude tighter than on DIEMA-7. Training accuracy is 99.89% on every seed. `neutral` reaches 39.5% recall from a third of the data of any other class, so the under-sampled label is not being ignored.
+Accuracy falls against the seven-emotion task but the multiple of chance rises, from 3.1 to 4.4 for a single model. The seed spread is about a tenth of a point, several times tighter than on DIEMA-7. Training accuracy is 99.89% on every seed. `neutral` reaches 39.8% recall from a third of the data of any other class, so the under-sampled label is not being ignored.
 
 ### Per emotion
 
 | emotion | clips | recall | precision | F1 | recall (ensemble) | F1 (ensemble) |
 |---|---|---|---|---|---|---|
-| anger | 828 | 40.7 | 37.5 | 39.0 | 43.6 | 41.6 |
-| contempt | 828 | 27.9 | 28.5 | 28.2 | 31.9 | 31.8 |
-| disgust | 828 | 20.8 | 24.8 | 22.6 | 22.3 | 25.2 |
-| fear | 828 | 40.5 | 33.3 | 36.5 | 45.2 | 40.4 |
-| joy | 828 | 40.6 | 38.3 | 39.4 | 43.0 | 41.6 |
-| sadness | 828 | 43.0 | 35.0 | 38.6 | 47.5 | 40.9 |
-| surprise | 828 | 34.5 | 35.0 | 34.7 | 38.6 | 39.2 |
-| neutral | 276 | 39.5 | 38.7 | 39.1 | 43.8 | 43.1 |
-| jealousy | 828 | 18.6 | 23.0 | 20.5 | 20.5 | 23.0 |
-| shame | 828 | 25.6 | 33.2 | 28.9 | 28.9 | 33.4 |
-| guilt | 828 | 17.3 | 21.9 | 19.4 | 17.4 | 20.2 |
-| gratitude | 828 | 53.3 | 43.9 | 48.1 | 56.0 | 49.9 |
-| pride | 828 | 37.9 | 37.2 | 37.5 | 40.3 | 39.6 |
+| anger | 828 | 39.5 | 37.6 | 38.5 | 43.6 | 42.6 |
+| contempt | 828 | 28.1 | 28.4 | 28.2 | 33.2 | 32.6 |
+| disgust | 828 | 20.3 | 25.0 | 22.4 | 22.7 | 25.7 |
+| fear | 828 | 40.2 | 33.9 | 36.8 | 45.8 | 41.5 |
+| joy | 828 | 40.5 | 38.8 | 39.6 | 43.5 | 42.4 |
+| sadness | 828 | 42.4 | 35.3 | 38.5 | 47.1 | 41.2 |
+| surprise | 828 | 34.5 | 34.6 | 34.6 | 39.3 | 39.5 |
+| neutral | 276 | 39.8 | 38.2 | 39.0 | 44.6 | 43.1 |
+| jealousy | 828 | 19.7 | 23.4 | 21.4 | 20.9 | 23.6 |
+| shame | 828 | 28.0 | 33.4 | 30.5 | 32.0 | 35.2 |
+| guilt | 828 | 16.4 | 21.4 | 18.6 | 18.1 | 21.3 |
+| gratitude | 828 | 53.1 | 43.5 | 47.8 | 56.8 | 50.9 |
+| pride | 828 | 37.9 | 36.6 | 37.3 | 42.6 | 41.1 |
 
-`gratitude` is the best-recognised label in the whole corpus at 53.3% recall. `guilt` and `jealousy` are the weakest at 17.3 and 18.6, below `disgust`. Of the seven original emotions, `anger`, `disgust` and `surprise` lose only 2 to 4 points of recall against six new competitors, while `contempt`, `joy` and `sadness` each lose 16 to 17. The confusion matrix shows where they went.
+`gratitude` is the best-recognised label in the whole corpus at 53.1% recall. `guilt` and `jealousy` are the weakest at 16.4 and 19.7, below `disgust`. Of the seven original emotions, `anger`, `disgust` and `surprise` lose only 2 to 4 points of recall against six new competitors, while `contempt`, `joy` and `sadness` each lose 16 to 18. The confusion matrix shows where they went.
 
 ![DIEMA-13 confusion matrix](figures/diema13_confusion.png)
 
@@ -124,25 +132,25 @@ Row percentages, true emotion in rows, single models pooled over seeds.
 
 | true \ predicted | neutr | disgu | jealo | conte | anger | surpr | fear | shame | guilt | sadne | joy | pride | grati |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| neutral | **39.5** | 4.6 | 6.3 | 9.2 | 3.1 | 1.8 | 4.6 | 3.4 | 4.3 | 10.4 | 5.1 | 5.2 | 2.5 |
-| disgust | 1.5 | **20.8** | 7.0 | 11.8 | 10.3 | 6.8 | 11.9 | 6.5 | 5.8 | 7.4 | 4.8 | 3.1 | 2.2 |
-| jealousy | 2.2 | 7.2 | **18.6** | 17.3 | 11.2 | 4.8 | 4.8 | 4.0 | 7.3 | 8.1 | 2.5 | 8.8 | 3.1 |
-| contempt | 3.7 | 10.1 | 14.2 | **27.9** | 11.1 | 4.7 | 5.3 | 3.7 | 4.0 | 4.3 | 2.1 | 7.1 | 1.9 |
-| anger | 1.8 | 5.3 | 7.3 | 9.0 | **40.7** | 6.6 | 5.7 | 2.4 | 3.8 | 5.5 | 5.7 | 3.9 | 2.3 |
-| surprise | 0.9 | 5.4 | 3.0 | 4.3 | 6.3 | **34.5** | 15.2 | 2.7 | 3.6 | 4.2 | 9.5 | 4.9 | 5.5 |
-| fear | 2.2 | 7.5 | 3.4 | 3.9 | 2.7 | 12.2 | **40.5** | 7.0 | 5.5 | 5.4 | 4.2 | 2.5 | 3.1 |
-| shame | 0.7 | 7.9 | 4.4 | 2.5 | 2.9 | 6.1 | 12.0 | **25.6** | 11.5 | 9.7 | 4.9 | 3.5 | 8.3 |
-| guilt | 1.5 | 7.3 | 6.7 | 5.0 | 4.4 | 3.6 | 10.4 | 10.6 | **17.3** | 16.6 | 2.6 | 4.1 | 9.9 |
-| sadness | 2.6 | 4.5 | 5.6 | 3.7 | 5.4 | 2.7 | 4.9 | 5.0 | 9.8 | **43.0** | 4.5 | 3.8 | 4.4 |
-| joy | 1.6 | 3.0 | 1.6 | 1.9 | 5.6 | 8.1 | 4.0 | 2.8 | 2.4 | 5.9 | **40.6** | 9.7 | 12.9 |
-| pride | 1.4 | 2.1 | 5.3 | 6.2 | 4.7 | 3.4 | 2.1 | 2.4 | 3.1 | 3.3 | 14.4 | **37.9** | 13.8 |
-| gratitude | 0.6 | 1.2 | 1.7 | 1.4 | 2.3 | 4.3 | 3.1 | 3.3 | 3.3 | 6.0 | 8.5 | 10.8 | **53.3** |
+| neutral | **39.8** | 4.4 | 6.2 | 9.3 | 2.7 | 1.7 | 5.0 | 3.1 | 4.6 | 10.2 | 4.5 | 5.4 | 3.1 |
+| disgust | 1.7 | **20.3** | 7.9 | 11.6 | 9.9 | 7.2 | 11.6 | 7.0 | 5.9 | 7.2 | 4.3 | 3.1 | 2.3 |
+| jealousy | 2.2 | 6.4 | **19.7** | 17.1 | 11.0 | 4.8 | 4.7 | 4.2 | 7.1 | 8.2 | 2.6 | 8.9 | 3.3 |
+| contempt | 3.8 | 9.5 | 14.1 | **28.1** | 10.9 | 4.5 | 4.9 | 4.2 | 4.2 | 4.2 | 1.9 | 7.4 | 2.1 |
+| anger | 2.0 | 5.4 | 7.6 | 9.5 | **39.5** | 6.8 | 5.6 | 2.4 | 3.6 | 5.3 | 5.5 | 4.4 | 2.3 |
+| surprise | 1.1 | 5.1 | 3.0 | 4.4 | 6.3 | **34.5** | 14.6 | 3.5 | 3.6 | 4.2 | 9.6 | 4.8 | 5.4 |
+| fear | 2.0 | 7.4 | 3.2 | 3.7 | 2.7 | 12.7 | **40.2** | 7.6 | 5.4 | 5.4 | 4.1 | 2.6 | 3.1 |
+| shame | 0.6 | 7.4 | 4.4 | 2.8 | 2.7 | 6.1 | 11.6 | **28.0** | 11.0 | 9.2 | 4.5 | 3.8 | 7.8 |
+| guilt | 1.5 | 7.5 | 7.0 | 5.3 | 4.3 | 3.7 | 9.4 | 11.6 | **16.4** | 16.4 | 2.5 | 4.2 | 10.2 |
+| sadness | 2.6 | 4.6 | 6.3 | 4.0 | 5.0 | 3.0 | 5.0 | 5.0 | 9.4 | **42.4** | 4.3 | 3.8 | 4.7 |
+| joy | 1.5 | 2.8 | 1.5 | 1.7 | 5.2 | 8.1 | 3.9 | 3.0 | 2.7 | 5.7 | **40.5** | 10.4 | 12.9 |
+| pride | 1.5 | 2.0 | 5.3 | 6.2 | 4.6 | 3.3 | 2.1 | 2.8 | 2.6 | 3.0 | 14.8 | **37.9** | 13.8 |
+| gratitude | 0.9 | 1.1 | 2.0 | 1.4 | 2.2 | 4.2 | 3.3 | 3.7 | 3.3 | 5.8 | 8.6 | 10.6 | **53.1** |
 
 In cluster order the thirteen labels fall into four blocks on the diagonal:
 
 - `disgust`, `jealousy`, `contempt`, `anger` — the negative cluster from the seven-emotion task, with `jealousy` joining it. `contempt` and `jealousy` exchange 14 to 17% of their clips.
 - `surprise` and `fear` — the same pair as before.
-- `shame`, `guilt`, `sadness` — a new low-arousal negative block. `guilt` goes to `sadness` 17% of the time, and this is where `sadness` lost its recall.
+- `shame`, `guilt`, `sadness` — a new low-arousal negative block. `guilt` goes to `sadness` 16% of the time, and this is where `sadness` lost its recall.
 - `joy`, `pride`, `gratitude` — a positive block. `joy` moved out of its old neighbourhood as soon as it had positive neighbours.
 
 The positive block is nearly sealed off from the negative ones, with at most 6% leakage either way. `neutral` sits between the low-arousal negatives and is confused mainly with `sadness` and `contempt`. Read this as valence separating the blocks and arousal ordering within them, but note that this is a reading of the figure, not a hypothesis anyone tested.
@@ -151,17 +159,17 @@ The positive block is nearly sealed off from the negative ones, with at most 6% 
 
 ## Reproducing these numbers
 
-Every number on this page was measured on Linux with one RTX 4090, Python 3.11 and torch 2.7.1 on CUDA 12.8, with the versions pinned in [constraints.txt](constraints.txt). The README's install section shows how to recreate that environment.
+Every RTX 4090 number on this page was measured on Linux with one RTX 4090, Python 3.11 and torch 2.7.1 on CUDA 12.8, with the versions pinned in [constraints.txt](constraints.txt); the RTX 3090 / 3070 Ti numbers ran in a Docker image built from that environment. The README's install section shows how to recreate that environment.
 
 ```bash
 # seven emotions, one seed, about 3 hours on one RTX 4090
 scripts/run_lpo.sh
 
-# the other four seeds
-for s in 1 2 3 4; do SEED=$s scripts/run_lpo.sh; done
+# the other nine seeds of the ten-seed level
+for s in 1 2 3 4 5 6 7 8 9; do SEED=$s scripts/run_lpo.sh; done
 
-# all thirteen labels
-CONFIG=configs/diema13_stgcn_recipe.yaml scripts/run_lpo.sh
+# all thirteen labels, five seeds
+for s in 255 1 2 3 4; do SEED=$s CONFIG=configs/diema13_stgcn_recipe.yaml scripts/run_lpo.sh; done
 
 # per-emotion figures and the confusion matrix for one seed
 python scripts/per_class_analysis.py \
@@ -170,6 +178,7 @@ python scripts/per_class_analysis.py \
     --labels configs/emo_to_idx_7.txt --out runs/per_class.json
 
 # the seed ensemble: cache each seed's probabilities, then average them
+# (255 1 2 3 4 for the 48.50 ensemble, 5 6 7 8 9 for the unselected one)
 for s in 255 1 2 3 4; do
   python scripts/collect_predictions.py \
       --config configs/diema7_stgcn_recipe.yaml \
