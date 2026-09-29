@@ -13,7 +13,12 @@
 #   body size    NOT divided out                      dividing it out costs 1.2
 #   schedule     400 epochs, cosine from lr 0.1,
 #                SGD momentum 0.9 nesterov            +2.7 over 100 epochs
-#   clip length  100 frames (3.3 s at 30 Hz)          flat from 50 to 200
+#   clip length  100 samples spread over the whole    50 costs 2.8, 200 costs 2.0
+#                clip by the loader's uniform sampler
+#                (not a window); shorter clips
+#                loop from their start
+#   frame rate   stored at 30 Hz                      60 Hz changes nothing
+#   positions    relative to each frame's root        a world frame is no better
 #   graph        edge_weighting: importance, which
 #                scales existing bones but cannot
 #                create new ones                      +3.2 over an unconstrained graph
