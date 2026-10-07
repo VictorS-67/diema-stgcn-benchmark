@@ -66,3 +66,33 @@ class TestTheFlagStillSelects:
         further in time. A silent flip of the default would move this by 2x."""
         size = lambda m: sum(p.numel() for p in m.parameters())
         assert size(_model(plusplus=True)) < size(_model(plusplus=False))
+
+
+class TestTheDilatedBranchesAreExact:
+    """``Basic_TCN_Unit`` computes a dilated convolution as the undilated one
+    it equals, because the dilated form loses cuDNN under deterministic
+    algorithms and trained STGCN++ ~5x slower. The rewrite is only acceptable
+    if it changes nothing but speed."""
+
+    def test_matches_the_dilated_convolution(self):
+        torch.manual_seed(0)
+        for dilation in (1, 2, 3, 4):
+            for stride in (1, 2):
+                unit = Basic_TCN_Unit(6, 6, kernel_size=3, stride=stride,
+                                      dilation=dilation).double().eval()
+                x = torch.randn(2, 6, 20, 5, dtype=torch.float64)
+                expected = unit.bn(unit.conv(x))
+                assert torch.allclose(unit(x), expected, rtol=0, atol=1e-12), \
+                    (dilation, stride)
+
+    def test_gradients_reach_only_the_real_taps(self):
+        """The zeros between taps are built each forward, not parameters, so
+        the state dict keeps its (k, 1) shape and old checkpoints still load."""
+        unit = Basic_TCN_Unit(4, 4, kernel_size=3, dilation=4).double()
+        x = torch.randn(2, 4, 20, 5, dtype=torch.float64)
+        unit(x).sum().backward()
+        assert unit.conv.weight.shape == (4, 4, 3, 1)
+        grad = unit.conv.weight.grad.clone()
+        unit.zero_grad()
+        unit.bn(unit.conv(x)).sum().backward()
+        assert torch.allclose(grad, unit.conv.weight.grad)
