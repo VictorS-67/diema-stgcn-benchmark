@@ -48,6 +48,7 @@ def generate_lpo_splits(
     filenames: list[str],
     num_folds: int,
     actor_fn=parse_diema_actor,
+    test_group: bool = True,
 ) -> list[dict]:
     """Generate K-fold LPO splits with disjoint train / val / test.
 
@@ -61,6 +62,13 @@ def generate_lpo_splits(
     serves as test in one fold and as val in exactly one other — no
     privileged val or test actors across the sweep.
 
+    With ``test_group=False`` each fold holds out one group instead of two:
+    val = group_k (the performers fold k would test on), test is empty, and
+    train is the other K-1 groups. Use it when nothing is selected on
+    validation (final-epoch checkpoint, no early stopping), so the val group
+    is as untouched as a test group would be and costs a training group for
+    nothing. The Loader then scores "test" on the val group.
+
     Round-robin ensures balanced folds. With 92 actors and 10 folds,
     folds 0-1 get 10 actors each, folds 2-9 get 9 each.
 
@@ -69,6 +77,8 @@ def generate_lpo_splits(
         num_folds: number of folds (K)
         actor_fn: callable that extracts an actor ID from a filename stem.
             Defaults to parse_diema_actor (DIEMA convention).
+        test_group: hold out a separate test group per fold (default). False
+            gives train / val only, as described above.
 
     Returns:
         List of K split dicts. Each dict has keys 'train', 'val', 'test'.
@@ -91,7 +101,7 @@ def generate_lpo_splits(
     # val and test each consume one actor-group per fold, so we need at
     # least 3 groups (otherwise train is empty or val == test). This is
     # a stricter lower bound than the old val==test design.
-    if num_folds < 3:
+    if test_group and num_folds < 3:
         raise ValueError(
             f"num_folds must be >= 3 for disjoint train/val/test, got {num_folds}"
         )
@@ -109,8 +119,12 @@ def generate_lpo_splits(
     # Build split dicts
     splits = []
     for fold_idx in range(num_folds):
-        test_actors = set(fold_actors[fold_idx])
-        val_actors = set(fold_actors[(fold_idx + 1) % num_folds])
+        if test_group:
+            test_actors = set(fold_actors[fold_idx])
+            val_actors = set(fold_actors[(fold_idx + 1) % num_folds])
+        else:
+            test_actors = set()
+            val_actors = set(fold_actors[fold_idx])
         train_entries, val_entries, test_entries = [], [], []
 
         for idx, fname in enumerate(filenames):
@@ -197,7 +211,10 @@ def fold_of_clip(
     num_folds: int,
     actor_fn=parse_diema_actor,
 ) -> int:
-    """Return the fold index (1-indexed) whose *test* split contains ``clip_name``.
+    """Return the fold index (1-indexed) whose held-out group contains ``clip_name``.
+
+    That is the *test* split by default, and the *val* split when the splits
+    are built with ``test_group=False``: fold k holds out group k either way.
 
     Used by the ACII 2026 interpretability workflow to route each PLD
     clip to the model checkpoint that never saw its performer during
@@ -226,7 +243,8 @@ def fold_of_clip(
     return (actor_idx % num_folds) + 1
 
 
-def build_lpo_split(data_path, fold: int, num_folds: int) -> dict:
+def build_lpo_split(data_path, fold: int, num_folds: int,
+                    test_group: bool = True) -> dict:
     """Generate the LPO split dict for a single fold from a preprocessed npz.
 
     Loads filenames from the dataset, generates all K splits deterministically,
@@ -240,5 +258,6 @@ def build_lpo_split(data_path, fold: int, num_folds: int) -> dict:
             f"No filenames found in {data_path}. "
             "Cannot generate LPO splits without filename metadata."
         )
-    all_splits = generate_lpo_splits(filenames, num_folds)
+    all_splits = generate_lpo_splits(filenames, num_folds,
+                                     test_group=test_group)
     return all_splits[fold - 1]

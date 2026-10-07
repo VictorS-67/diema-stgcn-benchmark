@@ -185,7 +185,8 @@ def main():
             # keyed on fold alone would hand every arm the first one built.
             fraction = getattr(cfg.data, "train_performer_fraction", 1.0)
             if (fold, fraction) not in splits:
-                split = build_lpo_split(cfg.data.data_path, fold, args.folds)
+                split = build_lpo_split(cfg.data.data_path, fold, args.folds,
+                                        cfg.data.lpo_test_group)
                 if fraction != 1.0:
                     split = subsample_train_performers(
                         split, fraction, seed=cfg.data.seed)

@@ -122,6 +122,8 @@ Two consequences you have to design around:
 
 Splits are built deterministically from the data file, so `--fold 3 --num-folds 10` gives everyone the same partition and no split files need sharing.
 
+**Dropping the test group.** The validation group exists so that choices can be made on it without touching test. When nothing is chosen on it, as with the recipe's final-epoch checkpoint and no early stopping, it is as untouched as the test group, and holding out both costs a training group for nothing. Setting `data.lpo_test_group: false` holds out only group *k*, as validation, and trains on the other nine; the val column is then the held-out estimate, and the scorer reports it as test too. Fold *k* holds out the same performers in both modes, so checkpoints still route to clips the same way. It is only sound while the configuration is fixed before the numbers are seen.
+
 ## 5. Configure
 
 One YAML fully specifies an experiment. `configs/diema7_stgcn_recipe.yaml` is the recommended one and its header explains what each block is doing.

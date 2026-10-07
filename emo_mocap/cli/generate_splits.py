@@ -28,6 +28,9 @@ def main():
                         help="Directory to write fold pickle files")
     parser.add_argument("--num-folds", type=int, required=True,
                         help="Number of folds (K)")
+    parser.add_argument("--no-test-group", action="store_true",
+                        help="Hold out only a validation group per fold "
+                             "(data.lpo_test_group: false in a config)")
     args = parser.parse_args()
 
     # Load filenames from npz
@@ -38,7 +41,8 @@ def main():
         return
 
     # Generate splits
-    splits = generate_lpo_splits(filenames, args.num_folds)
+    splits = generate_lpo_splits(filenames, args.num_folds,
+                                 test_group=not args.no_test_group)
 
     # Save to output directory
     output_dir = Path(args.output_dir)
