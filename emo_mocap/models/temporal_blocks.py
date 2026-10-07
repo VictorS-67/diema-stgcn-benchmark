@@ -10,6 +10,7 @@ model's package.
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from emo_mocap.models.weights_init import conv_init, bn_init
 
 
@@ -104,8 +105,26 @@ class Basic_TCN_Unit(nn.Module):
         bn_init(self.bn, 1) #initialize the weights
 
     def forward(self, x):
-        x = self.bn(self.conv(x))
-        return x
+        if self.conv.dilation[0] == 1:
+            return self.bn(self.conv(x))
+        # A dilated convolution is computed as the undilated one it equals:
+        # the same taps spread over a (k-1)*d+1 kernel with zeros between
+        # them. Under deterministic algorithms cuDNN has no kernel for the
+        # dilated form and PyTorch falls back to a per-sample im2col path,
+        # which made STGCN++ (four dilated branches per block) train ~5x
+        # slower. The undilated form keeps cuDNN, computes the same sum (equal
+        # to float64 rounding), and leaves the parameters, and so every
+        # checkpoint, as they are.
+        c = self.conv
+        d = c.dilation[0]
+        weight = c.weight.new_zeros(
+            c.out_channels, c.in_channels // c.groups,
+            (c.kernel_size[0] - 1) * d + 1, c.kernel_size[1],
+        )
+        weight[:, :, ::d] = c.weight
+        x = F.conv2d(x, weight, c.bias, stride=c.stride, padding=c.padding,
+                     groups=c.groups)
+        return self.bn(x)
 
 
 
