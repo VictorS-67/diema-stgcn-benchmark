@@ -269,3 +269,53 @@ class TestSubsampleTrainPerformers:
     def test_rejects_out_of_range_fractions(self, bad):
         with pytest.raises(ValueError, match="fraction"):
             subsample_train_performers(_split_with(10), bad)
+
+
+class TestWithoutATestGroup:
+    """``test_group=False``: each fold holds out one group, as validation."""
+
+    ACTORS = {"JP_01": 3, "JP_02": 4, "JP_03": 2, "TW_01": 5}
+
+    def test_val_is_the_group_the_default_mode_tests_on(self):
+        filenames = _make_filenames(self.ACTORS)
+        default = generate_lpo_splits(filenames, num_folds=4)
+        no_test = generate_lpo_splits(filenames, num_folds=4, test_group=False)
+        for a, b in zip(default, no_test):
+            assert b["val"] == a["test"]
+            assert b["test"] == []
+
+    def test_train_is_everyone_else(self):
+        filenames = _make_filenames(self.ACTORS)
+        for split in generate_lpo_splits(filenames, num_folds=4, test_group=False):
+            train = {parse_diema_actor(f) for f, _ in split["train"]}
+            val = {parse_diema_actor(f) for f, _ in split["val"]}
+            assert not train & val
+            assert len(split["train"]) + len(split["val"]) == len(filenames)
+
+    def test_every_clip_is_held_out_exactly_once(self):
+        filenames = _make_filenames(self.ACTORS)
+        held_out = [i for s in generate_lpo_splits(filenames, 4, test_group=False)
+                    for _, i in s["val"]]
+        assert sorted(held_out) == list(range(len(filenames)))
+
+    def test_fold_of_clip_still_routes_to_the_held_out_fold(self):
+        filenames = _make_filenames(self.ACTORS)
+        splits = generate_lpo_splits(filenames, num_folds=4, test_group=False)
+        for k, split in enumerate(splits, start=1):
+            for f, _ in split["val"]:
+                assert fold_of_clip(f, filenames, num_folds=4) == k
+
+    def test_two_folds_are_enough(self):
+        filenames = _make_filenames({"JP_01": 3, "JP_02": 3})
+        splits = generate_lpo_splits(filenames, num_folds=2, test_group=False)
+        assert all(s["train"] and s["val"] for s in splits)
+
+    def test_the_config_default_keeps_the_test_group(self, tmp_path):
+        from emo_mocap.tools.config import load_config
+        path = tmp_path / "c.yaml"
+        path.write_text(
+            "data: {data_path: x.npz}\n"
+            "model: {type: stgcn, num_class: 7, in_channels: 3}\n"
+            "skeleton: {num_nodes: 25, inward_edges: [[0, 1]]}\n"
+        )
+        assert load_config(path).data.lpo_test_group is True

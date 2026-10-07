@@ -82,6 +82,14 @@ _DEFAULTS = {
         # not "less data" — see splits.subsample_train_performers. Val and
         # test are never touched. For the Track D learning curve.
         "train_performer_fraction": 1.0,
+        # Leave-performer-out with --fold/--num-folds: hold out a separate test
+        # group in each fold (true), or only a validation group (false), which
+        # trains on K-1 groups instead of K-2. False is sound only when nothing
+        # is selected on validation -- final-epoch checkpoint, no early
+        # stopping -- and then the val column is the held-out estimate. Fold k
+        # holds out the same performers in both modes. See
+        # splits.generate_lpo_splits.
+        "lpo_test_group": True,
         # Which streams the packed (C, T, V) tensor carries, in channel order
         # (pybvh-ml >= 0.6). None keeps the historical default —
         # root translation as vertex 0 plus joint rotations, V = 1 + J.
