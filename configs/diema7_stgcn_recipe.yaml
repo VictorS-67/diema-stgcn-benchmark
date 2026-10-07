@@ -7,7 +7,9 @@
 #
 #   input        rotations (6D) + root/joint positions + velocity +
 #                acceleration: 15 channels on a 25-vertex graph
-#                                                     +3.6 over rotations alone
+#                                                     +3.6 over rotations alone;
+#                                                     dropping velocity and
+#                                                     acceleration costs 2.5
 #   augmentation mirror only, no rotation noise       +3.8 over no augmentation;
 #                                                     the other four cost 1.2
 #   body size    NOT divided out                      dividing it out costs 1.2
@@ -16,8 +18,15 @@
 #   clip length  100 samples spread over the whole    50 costs 2.8, 200 costs 2.0
 #                clip by the loader's uniform sampler
 #                (not a window); shorter clips
-#                loop from their start
-#   frame rate   stored at 30 Hz                      60 Hz changes nothing
+#                loop from their start                75 samples is as good, at
+#                                                     0.8x the training time
+#   frame rate   stored at 30 Hz                      60 Hz changes nothing;
+#                                                     15 Hz is acceptable at
+#                                                     about 1 lower, below that
+#                                                     it falls fast (10 Hz -2,
+#                                                     1 Hz -10): velocity and
+#                                                     acceleration need a short
+#                                                     difference interval
 #   positions    relative to each frame's root        a world frame is no better
 #   graph        edge_weighting: importance, which
 #                scales existing bones but cannot
