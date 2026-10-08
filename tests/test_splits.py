@@ -5,6 +5,7 @@ import pytest
 from emo_mocap.data.splits import (
     fold_of_clip,
     generate_lpo_splits,
+    held_out,
     parse_diema_actor,
     subsample_train_performers,
 )
@@ -319,3 +320,33 @@ class TestWithoutATestGroup:
             "skeleton: {num_nodes: 25, inward_edges: [[0, 1]]}\n"
         )
         assert load_config(path).data.lpo_test_group is True
+
+
+class TestHeldOut:
+    """``held_out(split)``: the clips of the performers fold k holds out, which
+    the prediction scripts score. Four performers in four folds: group k is the
+    k-th performer in sorted order, so fold 1 holds out JP_01."""
+
+    ACTORS = {"JP_01": 3, "JP_02": 4, "JP_03": 2, "TW_01": 5}
+
+    def _held_out_performers(self, **kw):
+        filenames = _make_filenames(self.ACTORS)
+        split = generate_lpo_splits(filenames, num_folds=4, **kw)[0]
+        return {parse_diema_actor(f) for f, _ in held_out(split)}
+
+    def test_is_the_test_group_by_default(self):
+        assert self._held_out_performers() == {"JP_01"}
+
+    def test_is_the_same_performers_without_a_test_group(self):
+        assert self._held_out_performers(test_group=False) == {"JP_01"}
+
+    @pytest.mark.parametrize("test_group", [True, False])
+    def test_is_what_the_loader_tests_on(self, test_group):
+        """The Loader and the prediction scripts score the same clips. JP_01's
+        three clips come first in the file, so they are indices 0-2."""
+        from emo_mocap.data.loader import Loader
+        filenames = _make_filenames(self.ACTORS)
+        split = generate_lpo_splits(filenames, 4, test_group=test_group)[0]
+        loader = Loader(data_path="unused.npz", split_dict=split, num_workers=0)
+        assert loader.test_indices == [0, 1, 2]
+        assert [i for _, i in held_out(split)] == [0, 1, 2]

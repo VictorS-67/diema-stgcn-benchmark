@@ -243,6 +243,15 @@ def fold_of_clip(
     return (actor_idx % num_folds) + 1
 
 
+def held_out(split: dict) -> list:
+    """The clips a fold holds out: its test group, or its validation group
+    when it has none (``test_group=False``, or an old split pickle with no
+    "test" key). Fold k holds out the same performers either way, so this is
+    what scores a fold's checkpoint.
+    """
+    return split.get("test") or split["val"]
+
+
 def build_lpo_split(data_path, fold: int, num_folds: int,
                     test_group: bool = True) -> dict:
     """Generate the LPO split dict for a single fold from a preprocessed npz.

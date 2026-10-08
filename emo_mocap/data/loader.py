@@ -8,6 +8,7 @@ import torch.utils.data
 import pytorch_lightning as pl
 
 from emo_mocap.data.feeder import Feeder
+from emo_mocap.data.splits import held_out
 
 
 def _default_num_workers() -> int:
@@ -127,10 +128,7 @@ class Loader(pl.LightningDataModule):
         self.train_indices = [idx for _, idx in self.split_dict["train"]]
         self.val_indices = [idx for _, idx in self.split_dict["val"]]
 
-        if "test" in self.split_dict and len(self.split_dict["test"]) > 0:
-            self.test_indices = [idx for _, idx in self.split_dict["test"]]
-        else:
-            self.test_indices = self.val_indices
+        self.test_indices = [idx for _, idx in held_out(self.split_dict)]
 
         if self.debug:
             debug_size = 100

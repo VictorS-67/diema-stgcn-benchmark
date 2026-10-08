@@ -27,7 +27,7 @@ import torch
 import torch.utils.data
 
 from emo_mocap.data.feeder import Feeder
-from emo_mocap.data.splits import build_lpo_split
+from emo_mocap.data.splits import build_lpo_split, held_out
 from emo_mocap.models.registry import get_model
 from emo_mocap.tools.config import load_config_with_overrides
 from emo_mocap.tools.runtime import configure_eval_runtime
@@ -105,7 +105,7 @@ def main():
                 num_class=cfg.model.num_class, map_location=device)
             probs, labels, names = _probs(
                 lit.model.eval().to(device), cfg,
-                [i for _, i in split["test"]], device)
+                [i for _, i in held_out(split)], device)
             probs_all.append(probs)
             labels_all.append(labels)
             names_all.extend(names)
