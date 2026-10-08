@@ -52,6 +52,10 @@ def _predict(model, cfg, indices, device):
         data_path=cfg.data.data_path, indices=indices,
         clip_length=cfg.training.clip_length, target_repr=cfg.data.target_repr,
         seed=cfg.data.seed, test=True,
+        # Without these the Feeder reads rotations only, and a position-stream
+        # config (the recipe's) fails on its first batch.
+        streams=getattr(cfg.data, "streams", None),
+        scale_normalize=getattr(cfg.data, "scale_normalize", False),
     )
     loader = torch.utils.data.DataLoader(
         feeder, batch_size=cfg.training.batch_size, shuffle=False,
