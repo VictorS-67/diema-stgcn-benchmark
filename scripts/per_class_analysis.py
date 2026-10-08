@@ -28,7 +28,7 @@ import torch
 import torch.utils.data
 
 from emo_mocap.data.feeder import Feeder
-from emo_mocap.data.splits import build_lpo_split
+from emo_mocap.data.splits import build_lpo_split, held_out
 from emo_mocap.models.registry import get_model
 from emo_mocap.tools.config import load_config_with_overrides
 from emo_mocap.tools.runtime import configure_eval_runtime
@@ -108,7 +108,7 @@ def main():
                 num_class=K, map_location=device)
 
             preds, labels = _predict(lit.model.eval().to(device),
-                                     cfg, [i for _, i in split["test"]], device)
+                                     cfg, [i for _, i in held_out(split)], device)
             for t, q in zip(labels.tolist(), preds.tolist()):
                 vc[t, q] += 1
             print(f"{variant or 'default':>6s} fold{fold:02d} done", flush=True)
