@@ -192,6 +192,7 @@ def main():
         seed=cfg.data.seed,
         streams=getattr(cfg.data, "streams", None),
         scale_normalize=getattr(cfg.data, "scale_normalize", False),
+        labels_path=getattr(cfg.data, "labels_path", None),
     )
 
     # Same numeric policy as emo-evaluate: predictions and the metrics they

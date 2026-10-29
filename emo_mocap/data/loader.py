@@ -82,6 +82,8 @@ class Loader(pl.LightningDataModule):
             defaults to the dataset's stored orders)
         streams: stream tuple for the packed tensor (pybvh-ml >= 0.6);
             None keeps the historical root+rotations packing. See Feeder.
+        labels_path: ``filename,label`` CSV replacing the stored labels in
+            every split, or None. See Feeder.
 
     Training runs must also register :class:`EpochSeedCallback` on the Trainer
     so the train Feeder's augmentation varies across epochs — ``emo-train``
@@ -103,6 +105,7 @@ class Loader(pl.LightningDataModule):
         euler_orders=None,
         streams=None,
         scale_normalize=False,
+        labels_path=None,
     ):
         super().__init__()
         self.data_path = Path(data_path)
@@ -116,6 +119,7 @@ class Loader(pl.LightningDataModule):
         self.euler_orders = euler_orders
         self.streams = streams
         self.scale_normalize = scale_normalize
+        self.labels_path = labels_path
 
         if split_dict is not None:
             self.split_dict = split_dict
@@ -145,6 +149,7 @@ class Loader(pl.LightningDataModule):
             euler_orders=self.euler_orders,
             streams=self.streams,
             scale_normalize=self.scale_normalize,
+            labels_path=self.labels_path,
         )
 
         if stage == "fit":

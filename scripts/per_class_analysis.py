@@ -56,6 +56,7 @@ def _predict(model, cfg, indices, device):
         # config (the recipe's) fails on its first batch.
         streams=getattr(cfg.data, "streams", None),
         scale_normalize=getattr(cfg.data, "scale_normalize", False),
+        labels_path=getattr(cfg.data, "labels_path", None),
     )
     loader = torch.utils.data.DataLoader(
         feeder, batch_size=cfg.training.batch_size, shuffle=False,
