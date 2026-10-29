@@ -45,6 +45,7 @@ def _probs(model, cfg, indices, device):
         # score_folds.py.
         streams=getattr(cfg.data, "streams", None),
         scale_normalize=getattr(cfg.data, "scale_normalize", False),
+        labels_path=getattr(cfg.data, "labels_path", None),
         test=True,               # deterministic sampling, no augmentation
     )
     loader = torch.utils.data.DataLoader(

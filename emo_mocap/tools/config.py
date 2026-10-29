@@ -112,6 +112,11 @@ _DEFAULTS = {
         # size out helps position-only input and hurts the mixed input the
         # recommended config uses, so it ships off.
         "scale_normalize": False,
+        # CSV of filename,label whose integer labels replace the ones stored
+        # in the dataset, for a target other than the one it was built with
+        # (intensity, ...). model.num_class must match. None keeps the
+        # stored labels. See Feeder.labels_path.
+        "labels_path": None,
     },
     "augmentation": {
         "enabled": False,

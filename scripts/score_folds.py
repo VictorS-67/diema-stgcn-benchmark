@@ -110,6 +110,7 @@ def _train_eval_loader(cfg, loader):
         # count rather than quietly producing a wrong number.
         streams=getattr(cfg.data, "streams", None),
         scale_normalize=getattr(cfg.data, "scale_normalize", False),
+        labels_path=getattr(cfg.data, "labels_path", None),
         test=True,               # deterministic sampling, no augmentation
     )
     return torch.utils.data.DataLoader(
@@ -212,6 +213,7 @@ def main():
                 # back to rotations.
                 streams=getattr(cfg.data, "streams", None),
                 scale_normalize=getattr(cfg.data, "scale_normalize", False),
+                labels_path=getattr(cfg.data, "labels_path", None),
             )
             loader.setup("fit")     # val split
             loader.setup("test")    # test split

@@ -567,6 +567,7 @@ def main():
         augmentation_pipeline=pipeline,
         streams=streams,
         scale_normalize=cfg.data.scale_normalize,
+        labels_path=cfg.data.labels_path,
     )
 
     # Build Lightning model

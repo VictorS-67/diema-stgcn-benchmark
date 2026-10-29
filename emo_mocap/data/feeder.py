@@ -11,6 +11,7 @@ carrying it predates the 0.8 rotation-math consolidation and should be
 regenerated with ``emo-preprocess`` (see ``check_repr``).
 """
 
+import csv
 import warnings
 
 import numpy as np
@@ -82,6 +83,21 @@ def check_repr(repr_name, source):
     return repr_name
 
 
+def read_labels(path, filenames):
+    """Labels for ``filenames``, in that order, from a ``filename,label`` CSV.
+
+    Raises naming the clips the file has no row for: a clip silently keeping
+    some default label would train on a wrong target.
+    """
+    with open(path, newline="") as f:
+        by_name = {row["filename"]: int(row["label"]) for row in csv.DictReader(f)}
+    missing = [str(n) for n in filenames if str(n) not in by_name]
+    if missing:
+        raise ValueError(
+            f"{len(missing)} clips have no row in {path}, e.g. {missing[:5]}")
+    return np.array([by_name[str(n)] for n in filenames], dtype=np.int64)
+
+
 class Feeder(torch.utils.data.Dataset):
     """PyTorch Dataset that loads preprocessed skeleton sequences.
 
@@ -139,17 +155,24 @@ class Feeder(torch.utils.data.Dataset):
             explanation for why position input trails rotation input by ~10
             points (Track E). Ignored when no position stream is packed —
             there is nothing to rescale.
+        labels_path: CSV with a ``filename,label`` header whose integer labels
+            replace the ones stored in the dataset, matched by filename, so
+            one dataset serves any per-clip target (intensity, a property of
+            the performer, ...) without being rebuilt. Every clip must have a
+            row. None keeps the stored labels.
     """
 
     def __init__(self, data_path, indices=None, clip_length=64,
                  target_repr="euler", test=False, seed=255,
                  augmentation_pipeline=None, euler_orders=None,
                  augment_in_test=False, stochastic_crop_in_test=False,
-                 streams=None, scale_normalize=False):
+                 streams=None, scale_normalize=False, labels_path=None):
         preprocessed = pybvh_ml.load_preprocessed(data_path)
         self.clips = preprocessed["clips"]
         self.labels = preprocessed.get("labels")
         self.filenames = preprocessed.get("filenames", [])
+        if labels_path is not None:
+            self.labels = read_labels(labels_path, self.filenames)
         self.skeleton_info = preprocessed.get("skeleton_info", {})
 
         # The representation the file was written in. pybvh-ml stores it in

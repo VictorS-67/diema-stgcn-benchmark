@@ -259,3 +259,57 @@ class TestFeederWithSplitIndices:
         t1, _, _ = feeder[0]
         t2, _, _ = feeder[0]
         assert torch.allclose(t1, t2), "Test mode should be deterministic"
+
+
+class TestLabelsFile:
+    """``labels_path``: a CSV of ``filename,label`` that replaces the labels
+    stored in the dataset, so one npz serves any per-clip target (intensity,
+    a property of the performer, ...) without being rebuilt."""
+
+    def _write(self, path, rows):
+        path.write_text("filename,label\n" + "".join(f"{f},{l}\n" for f, l in rows))
+        return path
+
+    def test_replaces_the_stored_labels_by_filename(self, mock_data_dir, tmp_path):
+        # Rows deliberately in reverse file order: the match is by name.
+        names = mock_data_dir["filenames"]
+        path = self._write(tmp_path / "l.csv",
+                           [(f, i % 2) for i, f in reversed(list(enumerate(names)))])
+        feeder = Feeder(mock_data_dir["data_path"], labels_path=path,
+                        clip_length=16, test=True, target_repr="quat")
+        assert [feeder[i][1].item() for i in range(len(names))] == [0, 1] * 5
+
+    def test_follows_the_index_subset(self, mock_data_dir, tmp_path):
+        names = mock_data_dir["filenames"]
+        path = self._write(tmp_path / "l.csv", [(f, i) for i, f in enumerate(names)])
+        feeder = Feeder(mock_data_dir["data_path"], labels_path=path, indices=[7, 2],
+                        clip_length=16, test=True, target_repr="quat")
+        assert [feeder[0][1].item(), feeder[1][1].item()] == [7, 2]
+
+    def test_a_clip_missing_from_the_file_raises(self, mock_data_dir, tmp_path):
+        names = mock_data_dir["filenames"]
+        path = self._write(tmp_path / "l.csv", [(f, 0) for f in names[1:]])
+        with pytest.raises(ValueError, match="test_sample_0"):
+            Feeder(mock_data_dir["data_path"], labels_path=path,
+                   clip_length=16, test=True, target_repr="quat")
+
+    def test_the_loader_passes_it_to_every_split(self, mock_data_dir, tmp_path):
+        from emo_mocap.data.loader import Loader
+        names = mock_data_dir["filenames"]
+        path = self._write(tmp_path / "l.csv", [(f, 1) for f in names])
+        loader = Loader(mock_data_dir["data_path"], split_dict=mock_data_dir["split"],
+                        labels_path=path, num_workers=0, target_repr="quat")
+        loader.setup("fit")
+        loader.setup("test")
+        for ds in (loader.dataset_train, loader.dataset_val, loader.dataset_test):
+            assert set(ds.labels.tolist()) == {1}
+
+    def test_the_config_default_keeps_the_stored_labels(self, tmp_path):
+        from emo_mocap.tools.config import load_config
+        path = tmp_path / "c.yaml"
+        path.write_text(
+            "data: {data_path: x.npz}\n"
+            "model: {type: stgcn, num_class: 7, in_channels: 3}\n"
+            "skeleton: {num_nodes: 25, inward_edges: [[0, 1]]}\n"
+        )
+        assert load_config(path).data.labels_path is None
