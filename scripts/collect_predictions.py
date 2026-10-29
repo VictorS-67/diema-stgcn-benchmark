@@ -98,7 +98,8 @@ def main():
             ck = [c for c in ckpts if c.name == "last.ckpt"] or ckpts[-1:]
 
             split = build_lpo_split(cfg.data.data_path, fold, args.folds,
-                                        cfg.data.lpo_test_group)
+                                        cfg.data.lpo_test_group,
+                                        pool_path=cfg.data.lpo_pool)
             model = get_model(cfg.model.type).from_config(cfg)
             lit = LightningModel.load_from_checkpoint(
                 str(ck[0]), model=model, base_lr=cfg.training.base_lr,

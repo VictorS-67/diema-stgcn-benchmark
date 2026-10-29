@@ -90,6 +90,12 @@ _DEFAULTS = {
         # holds out the same performers in both modes. See
         # splits.generate_lpo_splits.
         "lpo_test_group": True,
+        # Text file of actor IDs, one per line: only these performers rotate
+        # through the held-out groups, and everyone else trains in every
+        # fold. None rotates all performers, which gives the folds every
+        # earlier run used. For a test set fixed by an outside criterion. See
+        # splits.generate_lpo_splits.
+        "lpo_pool": None,
         # Which streams the packed (C, T, V) tensor carries, in channel order
         # (pybvh-ml >= 0.6). None keeps the historical default —
         # root translation as vertex 0 plus joint rotations, V = 1 + J.

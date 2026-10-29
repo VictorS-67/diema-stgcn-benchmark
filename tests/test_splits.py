@@ -350,3 +350,91 @@ class TestHeldOut:
         loader = Loader(data_path="unused.npz", split_dict=split, num_workers=0)
         assert loader.test_indices == [0, 1, 2]
         assert [i for _, i in held_out(split)] == [0, 1, 2]
+
+
+class TestPerformerPool:
+    """``pool``: only these performers rotate through the held-out groups;
+    everyone else trains in every fold. For a test set fixed by an outside
+    criterion."""
+
+    ACTORS = {"JP_01": 3, "JP_02": 4, "TW_01": 2, "TW_02": 5, "TW_03": 1}
+    POOL = {"TW_01", "TW_02", "TW_03"}
+
+    def _splits(self, **kw):
+        return generate_lpo_splits(_make_filenames(self.ACTORS), pool=self.POOL, **kw)
+
+    def test_only_pool_performers_are_held_out(self):
+        for split in self._splits(num_folds=3, test_group=False):
+            assert {parse_diema_actor(f) for f, _ in split["val"]} <= self.POOL
+
+    def test_performers_outside_the_pool_train_in_every_fold(self):
+        for split in self._splits(num_folds=3, test_group=False):
+            train = {parse_diema_actor(f) for f, _ in split["train"]}
+            assert {"JP_01", "JP_02"} <= train
+
+    def test_each_pool_performer_is_held_out_once(self):
+        held = [parse_diema_actor(f) for s in self._splits(num_folds=3, test_group=False)
+                for f, _ in s["val"]]
+        # TW_01 has 2 clips, TW_02 5, TW_03 1.
+        assert sorted(held) == ["TW_01"] * 2 + ["TW_02"] * 5 + ["TW_03"]
+
+    def test_a_pool_performer_missing_from_the_data_raises(self):
+        with pytest.raises(ValueError, match="TW_09"):
+            generate_lpo_splits(_make_filenames(self.ACTORS), num_folds=3,
+                                pool=self.POOL | {"TW_09"})
+
+    def test_fold_of_clip_routes_with_the_same_pool(self):
+        filenames = _make_filenames(self.ACTORS)
+        for k, split in enumerate(self._splits(num_folds=3, test_group=False), start=1):
+            for f, _ in split["val"]:
+                assert fold_of_clip(f, filenames, num_folds=3, pool=self.POOL) == k
+
+    def test_fold_of_clip_refuses_a_performer_outside_the_pool(self):
+        """JP_01 trains in every fold: no checkpoint never saw them."""
+        with pytest.raises(KeyError, match="JP_01"):
+            fold_of_clip("JP_01_anger_0_H", _make_filenames(self.ACTORS),
+                         num_folds=3, pool=self.POOL)
+
+    def test_build_lpo_split_reads_the_pool_from_a_file(self, tmp_path):
+        """``data.lpo_pool`` names a text file: one actor ID per line, blank
+        lines and ``#`` comments ignored."""
+        from emo_mocap.data.splits import build_lpo_split
+        from tests.test_generate_splits import _make_mock_npz
+        data_path = tmp_path / "d.npz"
+        _make_mock_npz(data_path, self.ACTORS)
+        pool_path = tmp_path / "pool.txt"
+        pool_path.write_text("# the fixed test performers\nTW_01\n\nTW_02\nTW_03\n")
+        held = {parse_diema_actor(f)
+                for k in (1, 2, 3)
+                for f, _ in build_lpo_split(data_path, k, 3, test_group=False,
+                                            pool_path=pool_path)["val"]}
+        assert held == self.POOL
+
+    def test_the_config_default_rotates_everyone(self, tmp_path):
+        from emo_mocap.tools.config import load_config
+        path = tmp_path / "c.yaml"
+        path.write_text(
+            "data: {data_path: x.npz}\n"
+            "model: {type: stgcn, num_class: 7, in_channels: 3}\n"
+            "skeleton: {num_nodes: 25, inward_edges: [[0, 1]]}\n"
+        )
+        assert load_config(path).data.lpo_pool is None
+
+
+class TestCheckPerformerDisjoint:
+    """``check_performer_disjoint(split)``: the run-time guard that no held-out
+    performer has a single clip in training."""
+
+    def test_passes_an_lpo_split(self):
+        from emo_mocap.data.splits import check_performer_disjoint
+        filenames = _make_filenames({"JP_01": 3, "JP_02": 4, "JP_03": 2, "TW_01": 5})
+        for split in generate_lpo_splits(filenames, num_folds=4):
+            check_performer_disjoint(split)
+
+    def test_raises_naming_a_performer_split_across_train_and_held_out(self):
+        from emo_mocap.data.splits import check_performer_disjoint
+        split = {"train": [("JP_01_anger_0_H", 0), ("TW_01_joy_1_M", 1)],
+                 "val": [("TW_01_joy_2_M", 2)],
+                 "test": []}
+        with pytest.raises(ValueError, match="TW_01"):
+            check_performer_disjoint(split)

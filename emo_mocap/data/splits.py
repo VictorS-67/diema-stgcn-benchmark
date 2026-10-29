@@ -49,6 +49,7 @@ def generate_lpo_splits(
     num_folds: int,
     actor_fn=parse_diema_actor,
     test_group: bool = True,
+    pool=None,
 ) -> list[dict]:
     """Generate K-fold LPO splits with disjoint train / val / test.
 
@@ -69,6 +70,12 @@ def generate_lpo_splits(
     is as untouched as a test group would be and costs a training group for
     nothing. The Loader then scores "test" on the val group.
 
+    With ``pool``, only the performers in it are distributed into the groups,
+    and everyone else trains in every fold. Use it when the test performers
+    are fixed by an outside criterion rather than by the rotation. With the
+    default ``pool=None`` every performer rotates, and the folds are the ones
+    every earlier run used.
+
     Round-robin ensures balanced folds. With 92 actors and 10 folds,
     folds 0-1 get 10 actors each, folds 2-9 get 9 each.
 
@@ -79,6 +86,8 @@ def generate_lpo_splits(
             Defaults to parse_diema_actor (DIEMA convention).
         test_group: hold out a separate test group per fold (default). False
             gives train / val only, as described above.
+        pool: actor IDs that rotate through the held-out groups, or None for
+            all of them. Each must appear in ``filenames``.
 
     Returns:
         List of K split dicts. Each dict has keys 'train', 'val', 'test'.
@@ -97,6 +106,13 @@ def generate_lpo_splits(
 
     # Sort actors alphabetically for determinism
     sorted_actors = sorted(actor_to_indices.keys())
+    if pool is not None:
+        # A pool actor missing from the data is a typo or the wrong dataset,
+        # and dropping it silently would shrink the test set unnoticed.
+        missing = sorted(set(pool) - set(sorted_actors))
+        if missing:
+            raise ValueError(f"pool actors not in the dataset: {missing}")
+        sorted_actors = sorted(pool)
 
     # val and test each consume one actor-group per fold, so we need at
     # least 3 groups (otherwise train is empty or val == test). This is
@@ -210,6 +226,7 @@ def fold_of_clip(
     filenames: list[str],
     num_folds: int,
     actor_fn=parse_diema_actor,
+    pool=None,
 ) -> int:
     """Return the fold index (1-indexed) whose held-out group contains ``clip_name``.
 
@@ -228,6 +245,9 @@ def fold_of_clip(
             produces on the live data)
         num_folds: same K passed to ``generate_lpo_splits``
         actor_fn: actor extractor (default DIEMA convention)
+        pool: same ``pool`` passed to ``generate_lpo_splits``. A clip whose
+            actor is outside it raises ``KeyError``: that actor trains in
+            every fold, so no checkpoint has not seen them.
 
     Returns:
         Fold index in ``[1, num_folds]``.
@@ -238,6 +258,13 @@ def fold_of_clip(
         raise KeyError(
             f"Actor {target_actor!r} (from clip {clip_name!r}) is not in the dataset"
         )
+    if pool is not None:
+        if target_actor not in pool:
+            raise KeyError(
+                f"Actor {target_actor!r} (from clip {clip_name!r}) is outside "
+                f"the pool, so it trains in every fold"
+            )
+        sorted_actors = sorted(pool)
     actor_idx = sorted_actors.index(target_actor)
     # Round-robin: actor at position i lands in fold (i % num_folds) → 1-indexed.
     return (actor_idx % num_folds) + 1
@@ -252,13 +279,37 @@ def held_out(split: dict) -> list:
     return split.get("test") or split["val"]
 
 
+def check_performer_disjoint(split: dict, actor_fn=parse_diema_actor) -> None:
+    """Raise if any performer has clips in more than one of train / val /
+    test, naming them.
+
+    ``generate_lpo_splits`` makes this true by construction. Checking it again
+    on the split a run actually trains on is what lets a number be reported
+    as one on unseen people.
+    """
+    actors = {name: {actor_fn(f) for f, _ in split.get(name) or []}
+              for name in ("train", "val", "test")}
+    for a, b in (("train", "val"), ("train", "test"), ("val", "test")):
+        shared = actors[a] & actors[b]
+        if shared:
+            raise ValueError(f"performers in both {a} and {b}: {sorted(shared)}")
+
+
+def read_pool(path) -> set[str]:
+    """Read a performer pool file: one actor ID per line, blank lines and
+    ``#`` comments ignored."""
+    lines = (line.split("#", 1)[0].strip() for line in open(path))
+    return {line for line in lines if line}
+
+
 def build_lpo_split(data_path, fold: int, num_folds: int,
-                    test_group: bool = True) -> dict:
+                    test_group: bool = True, pool_path=None) -> dict:
     """Generate the LPO split dict for a single fold from a preprocessed npz.
 
     Loads filenames from the dataset, generates all K splits deterministically,
     and returns the split dict for the requested fold (1-indexed, matching
-    the CLI convention).
+    the CLI convention). ``pool_path`` is a :func:`read_pool` file restricting
+    which performers rotate (see ``generate_lpo_splits``); None rotates all.
     """
     preprocessed = pybvh_ml.load_preprocessed(data_path)
     filenames = list(preprocessed.get("filenames", []))
@@ -267,6 +318,7 @@ def build_lpo_split(data_path, fold: int, num_folds: int,
             f"No filenames found in {data_path}. "
             "Cannot generate LPO splits without filename metadata."
         )
+    pool = read_pool(pool_path) if pool_path is not None else None
     all_splits = generate_lpo_splits(filenames, num_folds,
-                                     test_group=test_group)
+                                     test_group=test_group, pool=pool)
     return all_splits[fold - 1]

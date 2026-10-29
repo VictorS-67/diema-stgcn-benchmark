@@ -161,7 +161,8 @@ def main():
         if args.fold < 1 or args.fold > args.num_folds:
             parser.error(f"--fold must be between 1 and {args.num_folds}")
         split_dict = build_lpo_split(cfg.data.data_path, args.fold, args.num_folds,
-                                     cfg.data.lpo_test_group)
+                                     cfg.data.lpo_test_group,
+                                     pool_path=cfg.data.lpo_pool)
         split_path = None
     else:
         split_dict = None
