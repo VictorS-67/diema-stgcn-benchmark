@@ -33,6 +33,7 @@ from emo_mocap.models.registry import get_model
 from emo_mocap.data.loader import EpochSeedCallback, Loader
 from emo_mocap.data.splits import (
     build_lpo_split,
+    check_performer_disjoint,
     parse_diema_actor,
     subsample_train_performers,
 )
@@ -522,8 +523,10 @@ def main():
         if args.fold < 1 or args.fold > args.num_folds:
             parser.error(f"--fold must be between 1 and {args.num_folds}")
         split_dict = build_lpo_split(cfg.data.data_path, args.fold, args.num_folds,
-                                     cfg.data.lpo_test_group)
+                                     cfg.data.lpo_test_group,
+                                     pool_path=cfg.data.lpo_pool)
         split_dict = _apply_performer_fraction(cfg, split_dict)
+        check_performer_disjoint(split_dict)
         split_path = None
     else:
         split_dict = None
