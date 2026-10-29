@@ -288,8 +288,8 @@ class TestScaleNormalize:
         assert not torch.allclose(small, large, atol=1e-4)
         # The larger skeleton is twice the size, so its packed positions are
         # twice the magnitude — the nuisance signal, quantified.
-        assert large.abs().mean() == pytest.approx(2 * small.abs().mean(),
-                                                   rel=1e-3)
+        assert large.abs().mean().item() == pytest.approx(
+            2 * small.abs().mean().item(), rel=1e-3)
 
     def test_reference_is_corpus_wide_not_per_subset(self, mixed_size_dataset):
         """A Feeder holding only the large performer must divide by the same
